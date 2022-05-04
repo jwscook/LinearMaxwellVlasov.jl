@@ -1,0 +1,12 @@
+.DS_Store
+docs/derivation_notes.lyx~
+docs/#derivation_notes.lyx#
+docs/stringchanger.sh
+stringchanger.sh
+statprof
+profile.pb.gz
+derivation_*.txt
+*.pdf
+*.sh
+*.jld
+*.jld2
