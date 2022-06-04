@@ -1,7 +1,7 @@
 name = "LinearMaxwellVlasov"
 uuid = "b1137d70-0135-468f-bb3e-ace6f597c457"
 authors = ["James Cook <cookjws@gmail.com>"]
-version = "0.1.0"
+version = "0.1.1"
 
 [deps]
 CommonSubexpressions = "bbf7d656-a473-5ed7-a52c-81e309532950"
