@@ -106,9 +106,9 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies,
   result = if isreal(pole) && iszero(kz)
     integralsnested1D(principalzerokz)
   elseif isreal(pole)# && !iszero(kz)
-    integralsnested1D(principal)
+    integralsnested1D(principal) + integralsnested1D(coupledresidue)
   else
-    integral2D()
+    integral2D() + integralsnested1D(coupledresidue)
   end
-  return result + integralsnested1D(coupledresidue)
+  return result
 end

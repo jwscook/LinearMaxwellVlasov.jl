@@ -6,10 +6,12 @@ function Pole(pole::T, kparallel::Complex) where {T<:Number}
   return Pole(pole, real(kparallel))
 end
 
-function Pole(ω, K::Wavenumber, n::Int, Ω::Real)
-  kparallel = parallel(K)
-  return Pole((ω - n * Ω) / kparallel, kparallel)
+function Pole(ω::Number, kparallel::Number, n::Integer, Ω::Number)
+  T = promote_type(typeof(ω), typeof(kparallel), typeof(n), typeof(Ω))
+  op(x) = iszero(imag(ω)) ? real(x) : identity(x)
+  return Pole(T((op(ω) - n * Ω) / kparallel), kparallel)
 end
+Pole(ω, K::Wavenumber, n, Ω) = Pole(ω, parallel(K), n, Ω)
 
 for op ∈ (:abs, :conj, :real, :imag, :reim, :isreal, :float)
   @eval Base.$op(f::Pole) = $op(f.pole)

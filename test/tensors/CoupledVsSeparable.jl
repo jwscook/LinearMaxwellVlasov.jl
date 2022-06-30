@@ -38,12 +38,12 @@ Random.seed!(0)
       atol=eps()
       ωrs = (ω0, 2ω0, ω0 + Ω)
       σs = (-1, 0, 1)
-      ϕs = (-1, 1)
-      for params ∈ zip(ωrs, σs, ϕs)
-        (ωr, σ, ϕ) = params
+      kzs = (-k, 0k, k)
+      for params ∈ zip(ωrs, σs, kzs)
+        (ωr, σ, kz) = params
         ωr = abs(real(ωr)) # real ωr must be > 0
         F = ComplexF64(ωr, σ * ωr / 100)
-        K = Wavenumber(k=k, θ=ϕ * π/4)
+        K = Wavenumber(kz=kz, k⊥=k)
         config = Configuration(F, K)
         config.options = Options(quadrature_rtol=1.0e-9, summation_rtol=1e-8)
         outputS = LMV.contribution(separable, config)

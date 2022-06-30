@@ -2,6 +2,8 @@
 
 ![CI](https://github.com/jwscook/LinearMaxwellVlasov.jl/workflows/CI/badge.svg)
 [![codecov.io](http://codecov.io/github/jwscook/LinearMaxwellVlasov.jl/coverage.svg?branch=main)](http://codecov.io/github/jwscook/LinearMaxwellVlasov.jl?branch=main)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.6529288.svg)](https://doi.org/10.5281/zenodo.6529288)
+
 
 Solutions to the homogeneous linear Vlasov-Maxwell equations.
 
