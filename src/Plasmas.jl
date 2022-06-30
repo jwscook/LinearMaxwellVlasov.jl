@@ -1,15 +1,21 @@
 
 abstract type AbstractPlasma end
 
-struct NeutralPlasma{T<:AbstractVector{<:AbstractSpecies}} <: AbstractPlasma
-  species::T
-  function NeutralPlasma(plasma::T) where {T<:AbstractVector{<:AbstractSpecies}}
-    isneutral(plasma) || error(ArgumentError("Plasma is not neutral!"))
-    return new{T}(plasma)
-  end
-end
+const PlasmaContainerType = Union{AbstractVector{<:AbstractSpecies},
+  NTuple{N, AbstractSpecies} where {N}}
 
-struct Plasma{T<:AbstractVector{<:AbstractSpecies}} <: AbstractPlasma
+struct NeutralPlasma{T<:AbstractVector{<:AbstractSpecies}} <: AbstractPlasma
+#struct NeutralPlasma{T<:PlasmaContainerType} <: AbstractPlasma
+#   species::T
+  function NeutralPlasma(plasma::T) where {T<:AbstractVector{<:AbstractSpecies}}
+#  function NeutralPlasma(plasma::T) where {T}
+     isneutral(plasma) || error(ArgumentError("Plasma is not neutral!"))
+     return new{T}(plasma)
+   end
+ end
+
+#struct Plasma{T<:AbstractVector{<:AbstractSpecies}} <: AbstractPlasma
+struct Plasma{T<:PlasmaContainerType} <: AbstractPlasma
   species::T
 end
 
