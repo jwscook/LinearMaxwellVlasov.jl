@@ -5,7 +5,6 @@ using Test, Random
 using LinearMaxwellVlasov
 const LMV = LinearMaxwellVlasov
 
-
 Random.seed!(0)
 
 @testset "Separable vs Coupled velocity tensors" begin
@@ -33,15 +32,13 @@ Random.seed!(0)
     for (coupled, separable) ∈ ((coupledMaxwellian, separableMaxwellian),
                                 (coupledRingBeam, separableRingBeam), )
       k = Ω / Va / 2
-      ω0 = abs(vth * k) / 2
+      ωr = real(abs(vth * abs(k))) # real ωr must be > 0
       rtol=1e-4
       atol=eps()
-      ωrs = (ω0, 2ω0, ω0 + Ω)
       σs = (-1, 0, 1)
       kzs = (-k, 0k, k)
-      for params ∈ zip(ωrs, σs, kzs)
-        (ωr, σ, kz) = params
-        ωr = abs(real(ωr)) # real ωr must be > 0
+      for params ∈ zip(σs, kzs)
+        (σ, kz) = params
         F = ComplexF64(ωr, σ * ωr / 100)
         K = Wavenumber(kz=kz, k⊥=k)
         config = Configuration(F, K)

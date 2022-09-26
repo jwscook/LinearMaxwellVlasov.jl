@@ -5,8 +5,6 @@ using Test
 using LinearMaxwellVlasov
 const LMV = LinearMaxwellVlasov
 
-
-
 @testset "Maxwellian vs Numerical tensors" begin
   mₑ = LMV.mₑ
   mi = 1836*mₑ
@@ -59,14 +57,14 @@ const LMV = LinearMaxwellVlasov
         @inferred LMV.contribution(species, C, 0)
         @test true
       catch
-          @warn "contribution not inferred for $(nameof(typeof(species)))"
+        @warn "contribution not inferred for $(nameof(typeof(species)))"
         @test_broken false
       end
       try
         @inferred LMV.contribution(species, C)
         @test true
       catch
-          @warn "contribution not inferred for $(nameof(typeof(species)))"
+        @warn "contribution not inferred for $(nameof(typeof(species)))"
         @test_broken false
       end
     end
