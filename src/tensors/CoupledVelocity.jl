@@ -50,7 +50,7 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies,
     end
 
     output = @SArray [M11 M12 M13; M21 M22 M23; M31 M32 M33]
-    @assert !any(isnan, output) "output = $output, vz⊥=$vz⊥"
+    @assert !any(isnan, output) "output = $output, vz⊥=$vz⊥, $dfdvz, $dfdv⊥"
 
     return output
   end
@@ -58,8 +58,9 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies,
   integrand(vz⊥) = numerator(vz⊥) * invdenominator(vz⊥[1])
 
   function integral2D()
-    return first(HCubature.hcubature(integrand,
-      (-S.F.upper, S.F.lower), (S.F.upper, S.F.upper), initdiv=64,
+    ∫dvrdθ(vrθ) = vrθ[1] * integrand(parallelperpfrompolar(vrθ))
+    return first(HCubature.hcubature(∫dvrdθ,
+      (S.F.lower, -π / 2), (S.F.upper, π / 2), initdiv=64,
       rtol=C.options.quadrature_tol.rel, atol=C.options.quadrature_tol.abs))
   end
 
