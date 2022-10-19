@@ -63,7 +63,7 @@ function principalpartadaptive(f::T, pole::Number,
     radius::Real=(isreal(pole) ? abs(pole) : imag(pole)) * sqrt(eps()),
     N::Int=64, tol::Tolerance=Tolerance(); Nmax=2^20) where {T<:Function}
   @assert ispow2(N) "N must be a power of 2 but it is $N"
-  bitreverser(a, b) = ((bitreverse(i) for i in a:b) .+ 2.0^63) / 2.0^64
+  bitreverser(a, b) = ((bitreverse(i) + 2.0^63) / 2.0^64 for i in a:b)
   inner(θ) = f(radius * Complex(cos(θ), -sin(θ)) + pole)
   outer(x) = inner(2π * x) * exp(- im * 2π * x)
   value = mapreduce(outer, +, bitreverser(0, N-1)) / N * radius
