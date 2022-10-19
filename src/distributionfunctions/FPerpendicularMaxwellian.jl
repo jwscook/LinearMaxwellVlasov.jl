@@ -16,7 +16,7 @@ function FPerpendicularMaxwellian(vth::T) where {T<:Number}
   return FPerpendicularMaxwellian(vth, smp)
 end
 
-(f::FPerpendicularMaxwellian)(∂F∂v::Bool=false) where {T<:Number} = v -> f.F(v, ∂F∂v)
+(f::FPerpendicularMaxwellian)(∂F∂v::Bool=false) = v -> f.F(v, ∂F∂v)
 (f::FPerpendicularMaxwellian)(v::T, ∂F∂v::Bool=false) where {T<:Number} = f.F(v, ∂F∂v)
 
 is_normalised(f::FPerpendicularMaxwellian) = true
