@@ -90,7 +90,7 @@ function relativisticmomentum(S::CoupledRelativisticSpecies,
       transformfrominfinity(integrandpz, S.F.normalisation[1])
     end
     principal = first(QuadGK.quadgk(objective, -bound, bound, rtol=innertol))
-    @assert !any(isnan, principal) "principal = $principal"
+    @assert !any(isnan, principal)# "principal = $principal"
     return principal
   end
   function relativisticresidue(p⊥)
@@ -106,20 +106,22 @@ function relativisticmomentum(S::CoupledRelativisticSpecies,
       return output
     end
     output = mapreduce(localresidue, +, p⊥roots)
-    @assert !any(isnan, output) "output = $output"
+    @assert !any(isnan, output)# "output = $output"
     return output
   end
-  function integralsnested1D(∫dpz::T) where {T<:Function}
+  function integralsnested1D(∫dpz::T, nrm=1) where {T<:Function}
     p⊥normalisation = S.F.normalisation[2]
     transformfunctor = TransformFromInfinity(∫dpz, p⊥normalisation)
     return first(QuadGK.quadgk(
       transformfunctor,
       coordinate(transformfunctor, p⊥normalisation * 1e-8),
       coordinate(transformfunctor, p⊥normalisation * 1e8),
+      atol=max(C.options.quadrature_tol.abs,
+               outertol * nrm),
       rtol=outertol))
   end
 
   result = polesarereal ? integralsnested1D(principal) : integral2D()
-  result += integralsnested1D(relativisticresidue)
+  result += integralsnested1D(relativisticresidue, norm(result))
   return result
 end
