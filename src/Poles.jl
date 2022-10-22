@@ -24,7 +24,8 @@ Base.:+(x::Number, p::Pole) = x + p.pole
 (pole::Pole)(x) = wavedirectionalityhandler(x, pole.realkparallel)
 wavedirectionalityhandler(pole::Pole) = x->pole(x)
 function wavedirectionalityhandler(x::Number, kz::Number)
-  return Complex(real(x), (real(kz) < 0 ? -imag(x) : imag(x)))
+  # this way works with DualNumbers
+  return real(x) + im * (real(kz) < 0 ? -imag(x) : imag(x))
 end
 
 function residue(numerator::T, pole::Number) where {T<:Function}
