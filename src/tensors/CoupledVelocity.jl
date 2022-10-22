@@ -101,7 +101,7 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies,
   function integralsnested1D(∫dv⊥::T, nrm=1) where T
     return first(QuadGK.quadgk(∫dv⊥, S.F.lower, S.F.upper, order=32,
       atol=max(C.options.quadrature_tol.abs,
-               C.options.quadrature_tol.rel * nrm),
+               C.options.quadrature_tol.rel * nrm / 2),
       rtol=C.options.quadrature_tol.rel))
   end
 

@@ -117,7 +117,7 @@ function relativisticmomentum(S::CoupledRelativisticSpecies,
       coordinate(transformfunctor, p⊥normalisation * 1e-8),
       coordinate(transformfunctor, p⊥normalisation * 1e8),
       atol=max(C.options.quadrature_tol.abs,
-               outertol * nrm),
+               outertol * nrm / 2),
       rtol=outertol))
   end
 
