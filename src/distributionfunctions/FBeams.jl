@@ -19,3 +19,6 @@ end
 (f::FBeam)(v::T, ∂F∂v::Bool=false) where {T<:Number} = f.F(v, ∂F∂v)
 
 is_normalised(f::FBeam) = true
+
+lower(f::FBeam) = f.vd - f.vth * default_integral_range
+upper(f::FBeam) = f.vd + f.vth * default_integral_range

@@ -49,6 +49,9 @@ include("./distributionfunctions/FRings.jl")
 include("./distributionfunctions/FMomentum.jl")
 include("./distributionfunctions/FCoupledVelocity.jl")
 
+lower(f::AbstractDistributionFunction) = f.lower
+upper(f::AbstractDistributionFunction) = f.upper
+
 """
 Integration of Abstract Arbitrary FParallel
 """
