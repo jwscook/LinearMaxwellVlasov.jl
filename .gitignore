@@ -11,3 +11,4 @@ derivation_*.txt
 *.jld
 *.jld2
 Manifest.toml
+*.pb.gz
