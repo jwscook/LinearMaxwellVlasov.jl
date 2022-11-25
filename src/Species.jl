@@ -107,10 +107,10 @@ struct CoupledVelocitySpecies{
   F::TF
 end
 (S::CoupledVelocitySpecies)(vz, v⊥) = S.F(vz, v⊥)
-function CoupledVelocitySpecies(Π::Float64, Ω::Float64, vthb::Float64,
-    vth⊥::Float64=vthb, vzdrift::Float64=0.0, v⊥drift::Float64=0.0)
+function CoupledVelocitySpecies(Π::Float64, Ω::Float64, vthz::Float64,
+    vth⊥::Float64=vthz, vzdrift::Float64=0.0, v⊥drift::Float64=0.0)
   return CoupledVelocitySpecies(Π, Ω,
-    FCoupledVelocityNumerical(vthb, vth⊥,
+    FCoupledVelocityNumerical(vthz, vth⊥,
       vzdrift, v⊥drift))
 end
 
