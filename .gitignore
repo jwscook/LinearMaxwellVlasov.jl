@@ -10,3 +10,4 @@ derivation_*.txt
 *.sh
 *.jld
 *.jld2
+Manifest.toml
