@@ -40,7 +40,8 @@ Random.seed!(0)
       for params ∈ zip(σs, kzs)
         (σ, kz) = params
         F = ComplexF64(ωr, σ * ωr / 100)
-        K = Wavenumber(kz=kz, k⊥=k)
+        K = Wavenumber(kz=k, k⊥=abs(k))
+        iszero(K) && continue
         config = Configuration(F, K)
         config.options = Options(quadrature_rtol=1.0e-9, summation_rtol=1e-8)
         outputS = LMV.contribution(separable, config)
