@@ -24,6 +24,9 @@ end
 (f::FCoupledVelocityNumerical)(v) = f.F(v[1], v[2])
 (f::FCoupledVelocityNumerical)(vz, v⊥) = f.F(vz, v⊥)
 
+lower(f::FCoupledVelocityNumerical) = f.lower
+upper(f::FCoupledVelocityNumerical) = f.upper
+
 struct ShiftedMaxwellianCoupled{T,U,V,W,X} <: Function
   Fz::ShiftedMaxwellianParallel{T,U}
   F⊥::ShiftedMaxwellianPerpendicular{V,W,X}
@@ -48,7 +51,7 @@ function integrate(F::AbstractCoupledVelocity)
   objective(v) = v[2] * F(v)
   ∫dvrdθ(vrθ) = vrθ[1] * objective(parallelperpfrompolar(vrθ))
   return 2π * first(HCubature.hcubature(∫dvrdθ,
-    [F.lower, -π / 2], [F.upper, π / 2], initdiv=50, maxevals=1_000_000,
+    [lower(F), -π / 2], [upper(F), π / 2], initdiv=50, maxevals=1_000_000,
     rtol=1e5eps(), atol=0.0))
 end
 

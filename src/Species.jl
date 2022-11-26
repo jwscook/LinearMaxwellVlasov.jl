@@ -16,7 +16,6 @@ abstract type AbstractSeparableVelocitySpecies{Tz, T⊥} <:
 
 (S::AbstractKineticSpecies)(v) = S(v...)
 
-
 """
     ColdSpecies <: AbstractFluidSpecies
 Cold plasma species.
@@ -85,6 +84,10 @@ struct SeparableVelocitySpecies{
 end
 (S::SeparableVelocitySpecies)(vz, v⊥) = S.Fz(vz) * S.F⊥(v⊥)
 
+lowerintegralbounds(S::SeparableVelocitySpecies) = (lower(S.Fz), lower(S.F⊥))
+upperintegralbounds(S::SeparableVelocitySpecies) = (upper(S.Fz), upper(S.F⊥))
+
+
 """
 Kinetic plasma species defined by one coupled distribution function in velocity
 space, parallel and perpendicular to the background magnetic field
@@ -104,12 +107,15 @@ struct CoupledVelocitySpecies{
   F::TF
 end
 (S::CoupledVelocitySpecies)(vz, v⊥) = S.F(vz, v⊥)
-function CoupledVelocitySpecies(Π::Float64, Ω::Float64, vthb::Float64,
-    vth⊥::Float64=vthb, vzdrift::Float64=0.0, v⊥drift::Float64=0.0)
+function CoupledVelocitySpecies(Π::Float64, Ω::Float64, vthz::Float64,
+    vth⊥::Float64=vthz, vzdrift::Float64=0.0, v⊥drift::Float64=0.0)
   return CoupledVelocitySpecies(Π, Ω,
-    FCoupledVelocityNumerical(vthb, vth⊥,
+    FCoupledVelocityNumerical(vthz, vth⊥,
       vzdrift, v⊥drift))
 end
+
+lowerintegralbounds(S::CoupledVelocitySpecies) = (-upper(S.F), lower(S.F))
+upperintegralbounds(S::CoupledVelocitySpecies) = (upper(S.F), upper(S.F))
 
 """
 Kinetic plasma species defined by one coupled distribution function in momentum
@@ -142,6 +148,9 @@ function CoupledRelativisticSpecies(Π, Ω, m, pthz::Number, pth⊥=pthz, pzdrif
   return CoupledRelativisticSpecies(Π, Ω, m,
     FRelativisticNumerical(pthz, pth⊥, pzdrift))
 end
+
+lowerintegralbounds(S::CoupledRelativisticSpecies) = (-c₀, 0.0)
+upperintegralbounds(S::CoupledRelativisticSpecies) = (c₀, c₀)
 
 """
     MaxwellianSpecies(Π,Ω,vthb,vth⊥=vthb,vdb=0.0)

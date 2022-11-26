@@ -50,7 +50,7 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies,
     end
 
     output = @SArray [M11 M12 M13; M21 M22 M23; M31 M32 M33]
-    @assert !any(isnan, output) "output = $output, vz⊥=$vz⊥, $dfdvz, $dfdv⊥"
+    @assert !any(isnan, output)# "output = $output, vz⊥=$vz⊥, $dfdvz, $dfdv⊥"
 
     return output
   end
@@ -71,7 +71,7 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies,
     output = first(QuadGK.quadgk(∫dvz, -S.F.upper, S.F.upper, order=32,
       atol=C.options.quadrature_tol.abs,
       rtol=C.options.quadrature_tol.rel / 10))
-    @assert !any(isnan, output) "v⊥ = $v⊥, output = $output"
+    @assert !any(isnan, output)# "v⊥ = $v⊥, output = $output"
     return output
   end
 
@@ -82,7 +82,7 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies,
     output = first(QuadGK.quadgk(∫dvz_kz_folded, S.F.lower, S.F.upper, order=32,
         atol=C.options.quadrature_tol.abs,
         rtol=max(eps(), C.options.quadrature_tol.rel / 10)))
-    @assert !any(isnan, output) "v⊥ = $v⊥, output = $output"
+    @assert !any(isnan, output)# "v⊥ = $v⊥, output = $output"
     return output
   end
 
@@ -94,22 +94,25 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies,
       C.options.summation_tol, Nmax=2048)
     output = polefix.(residue(pp, polefix(pole)))
     output = sign(real(kz)) .* real(output) .+ im .* imag(output)
-    @assert !any(isnan, output) "v⊥ = $v⊥, pp = $pp, pole = $pole"
+    @assert !any(isnan, output)# "v⊥ = $v⊥, pp = $pp, pole = $pole"
     return output
   end
 
-  function integralsnested1D(∫dv⊥::T) where T
+  function integralsnested1D(∫dv⊥::T, nrm=1) where T
     return first(QuadGK.quadgk(∫dv⊥, S.F.lower, S.F.upper, order=32,
-      atol=C.options.quadrature_tol.abs,
+      atol=max(C.options.quadrature_tol.abs,
+               C.options.quadrature_tol.rel * nrm / 2),
       rtol=C.options.quadrature_tol.rel))
   end
 
   result = if isreal(pole) && iszero(kz)
     integralsnested1D(principalzerokz)
   elseif isreal(pole)# && !iszero(kz)
-    integralsnested1D(principal) + integralsnested1D(coupledresidue)
+    pp = integralsnested1D(principal)
+    pp .+ integralsnested1D(coupledresidue, norm(pp))
   else
-    integral2D() + integralsnested1D(coupledresidue)
+    i2d = integral2D()
+    i2d .+ integralsnested1D(coupledresidue, norm(i2d))
   end
   return result
 end

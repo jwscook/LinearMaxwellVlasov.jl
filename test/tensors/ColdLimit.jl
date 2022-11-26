@@ -60,5 +60,12 @@ for i ∈ 1:3, j ∈ 1:3
   @test expected ≈ outputCoupled[i, j] rtol=tol atol=tol
   @test expected ≈ outputRelativistic[i, j] rtol=tol atol=tol
 end
+# TODO this is a rubbish test, improve
+for s ∈ (maxwellian, numerical, coupled, relativistic)
+  @test LMV.lowerintegralbounds(s)[1] < 0
+  @test LMV.lowerintegralbounds(s)[2] >= 0
+  @test LMV.upperintegralbounds(s)[1] > 0
+  @test LMV.upperintegralbounds(s)[2] >= 0
+end
 
 end

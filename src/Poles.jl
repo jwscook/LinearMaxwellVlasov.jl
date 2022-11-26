@@ -24,7 +24,8 @@ Base.:+(x::Number, p::Pole) = x + p.pole
 (pole::Pole)(x) = wavedirectionalityhandler(x, pole.realkparallel)
 wavedirectionalityhandler(pole::Pole) = x->pole(x)
 function wavedirectionalityhandler(x::Number, kz::Number)
-  return Complex(real(x), (real(kz) < 0 ? -imag(x) : imag(x)))
+  # this way works with DualNumbers
+  return real(x) + im * (real(kz) < 0 ? -imag(x) : imag(x))
 end
 
 function residue(numerator::T, pole::Number) where {T<:Function}
@@ -40,7 +41,7 @@ end
 residuesigma(pole::Number) = imag(pole) < 0 ? 2 : imag(pole) == 0 ? 1 : 0
 
 function discretefouriertransform(f::T, n::Int, N=512) where {T<:Function}
-  kernel(i) = f(2π * i / N) * exp(im * i * n / N * 2π)
+  kernel(i) = f(2π * i / N) * cis(i * n / N * 2π)
   output = mapreduce(kernel, +, 0:(N-1)) / N
   output *= iszero(n) ? 1 : 2
   return output
@@ -63,9 +64,9 @@ function principalpartadaptive(f::T, pole::Number,
     radius::Real=(isreal(pole) ? abs(pole) : imag(pole)) * sqrt(eps()),
     N::Int=64, tol::Tolerance=Tolerance(); Nmax=2^20) where {T<:Function}
   @assert ispow2(N) "N must be a power of 2 but it is $N"
-  bitreverser(a, b) = ((bitreverse(i) for i in a:b) .+ 2.0^63) / 2.0^64
+  bitreverser(a, b) = ((bitreverse(i) + 2.0^63) / 2.0^64 for i in a:b)
   inner(θ) = f(radius * Complex(cos(θ), -sin(θ)) + pole)
-  outer(x) = inner(2π * x) * exp(- im * 2π * x)
+  outer(x) = inner(2π * x) * cispi(- 2x)
   value = mapreduce(outer, +, bitreverser(0, N-1)) / N * radius
   delta = mapreduce(outer, +, bitreverser(N, 2N-1)) / 2N * radius
   while !isapprox(value, value / 2 + delta, rtol=tol.rel, atol=tol.abs, nans=true)
