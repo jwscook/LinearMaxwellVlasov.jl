@@ -156,11 +156,20 @@ function contribution(species::AbstractKineticSpecies, config::Configuration,
 end
 
 """
-The dielectric tensor for a given species
+The contribution to the dielectric tensor for a given species
 """
-function dielectric(species::AbstractSpecies, config::Configuration,
+function dielectriccontribution(species::AbstractSpecies, config::Configuration,
     cache::Cache=Cache())
   return contribution(species, config, cache) * (species.Π / config.frequency)^2
+end
+
+"""
+The conducivity tensor for a given species
+"""
+function conductivity(species::AbstractSpecies, config::Configuration,
+    cache::Cache=Cache())
+  ϵᵢⱼₛ = dielectriccontribution(species, config, cache)
+  return -im * config.frequency * ϵ₀ * ϵᵢⱼₛ
 end
 
 """
@@ -168,7 +177,7 @@ The dielectric tensor for a given plasma
 """
 function dielectric(plasma::AbstractPlasma, config::Configuration,
     cache::Cache=Cache())
-  ϵᵢⱼₛ = species -> dielectric(species, config, cache)
+  ϵᵢⱼₛ = species -> dielectriccontribution(species, config, cache)
   return mapreduce(ϵᵢⱼₛ, +, plasma) + I
 end
 
@@ -184,10 +193,12 @@ function tensor(plasma::AbstractPlasma, config::Configuration,
 end
 
 """
-The electrostatic dielectric tensor for a given plasma
+The electrostatic dielectric tensor for a given plasma, a zero valued
+determinant of which represents a solution to the linear
+poisson-vlasov system of equations
 """
-function electrostaticdielectric(plasma::AbstractPlasma, config::Configuration,
+function electrostatictensor(plasma::AbstractPlasma, config::Configuration,
     cache::Cache=Cache())
-  ϵₛ = s -> parallel(s, config, 0, UInt64(1), true) * s.Π^2 / config.frequency
-  return mapreduce(ϵₛ, +, plasma) + 1
+  return dielectric(plasma, config, cache)
 end
+

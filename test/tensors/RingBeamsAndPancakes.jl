@@ -40,12 +40,6 @@ const LMV = LinearMaxwellVlasov
 
   O = Options()
 
-  function f2Dω!(x::Vector{T}, C::Configuration, S, cache) where {T<:Number}
-    C.frequency = ComplexF64(x[1], x[2])
-    t = @elapsed output = det(dielectric(S, C, cache))
-    return output
-  end
-
   ks_positive = range(0.1, stop=100.0, length=2^3) * k0
   ks = sort(vcat(-ks_positive, ks_positive))
 
@@ -64,12 +58,12 @@ const LMV = LinearMaxwellVlasov
     C = Configuration(F, K, O)
     push!(configurations, C)
 
-    push!(vals_numerical_rb, dielectric(numerical_rb, C))
-    push!(vals_ringbeam_rb, dielectric(ringbeam_rb, C))
+    push!(vals_numerical_rb, conductivity(numerical_rb, C))
+    push!(vals_ringbeam_rb, conductivity(ringbeam_rb, C))
 
-    push!(vals_maxwellian_bp, dielectric(maxwellian_bp, C))
-    push!(vals_numerical_bp, dielectric(numerical_bp, C))
-    push!(vals_ringbeam_bp, dielectric(ringbeam_bp, C))
+    push!(vals_maxwellian_bp, conductivity(maxwellian_bp, C))
+    push!(vals_numerical_bp, conductivity(numerical_bp, C))
+    push!(vals_ringbeam_bp, conductivity(ringbeam_bp, C))
   end
 
   # these ones are different
@@ -81,12 +75,12 @@ const LMV = LinearMaxwellVlasov
     C = Configuration(F, K, O)
     push!(configurations, C)
 
-    push!(vals_numerical_rb, dielectric(numerical_rb, C))
-    push!(vals_ringbeam_rb, dielectric(ringbeam_rb, C))
+    push!(vals_numerical_rb, conductivity(numerical_rb, C))
+    push!(vals_ringbeam_rb, conductivity(ringbeam_rb, C))
 
-    push!(vals_maxwellian_bp, dielectric(maxwellian_bp, C))
-    push!(vals_numerical_bp, dielectric(numerical_bp, C))
-    push!(vals_ringbeam_bp, dielectric(ringbeam_bp, C))
+    push!(vals_maxwellian_bp, conductivity(maxwellian_bp, C))
+    push!(vals_numerical_bp, conductivity(numerical_bp, C))
+    push!(vals_ringbeam_bp, conductivity(ringbeam_bp, C))
   end
 
   @testset "Inferred" begin
@@ -94,17 +88,17 @@ const LMV = LinearMaxwellVlasov
     F = ComplexF64(1.0 + im)
     C = Configuration(F, K, O)
     try
-      @inferred dielectric(numerical_rb, C)
+      @inferred conductivity(numerical_rb, C)
       @test true
     catch
-      @warn "dielectric not inferred for $(nameof(typeof(numerical_rb)))"
+      @warn "conductivity not inferred for $(nameof(typeof(numerical_rb)))"
       @test_broken false
     end
     try
-      @inferred dielectric(ringbeam_rb, C)
+      @inferred conductivity(ringbeam_rb, C)
       @test true
     catch
-      @warn "dielectric not inferred for $(nameof(typeof(ringbeam_rb)))"
+      @warn "conductivity not inferred for $(nameof(typeof(ringbeam_rb)))"
       @test_broken false
     end
   end

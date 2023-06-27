@@ -42,9 +42,9 @@ const LMV = LinearMaxwellVlasov
   end
 
   @testset "tensors" begin
-    outputM = dielectric(unitM, C)
-    outputN = dielectric(unitN, C)
-    outputR = dielectric(unitR, C)
+    outputM = conductivity(unitM, C)
+    outputN = conductivity(unitN, C)
+    outputR = conductivity(unitR, C)
     for i ∈ 1:9
       @test real(outputN[i]) ≈ real(outputM[i]) rtol=1.0e-6
       @test imag(outputN[i]) ≈ imag(outputM[i]) rtol=1.0e-6

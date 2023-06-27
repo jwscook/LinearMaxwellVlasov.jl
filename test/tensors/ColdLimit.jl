@@ -7,7 +7,7 @@ using LinearMaxwellVlasov
 const LMV = LinearMaxwellVlasov
 
 
-@testset "Cold Limit Dielectrics" begin
+@testset "Cold Limit conductivities" begin
 
 mₑ = LMV.mₑ
 mi = 1836*mₑ
@@ -44,13 +44,13 @@ C = Configuration(F, K, O)
 
 tol = 1.0e-3
 
-outputCold = dielectric(cold, C)
-outputDelta = dielectric(delta, C)
-outputWarm = dielectric(warm, C)
-outputMaxwellian = dielectric(maxwellian, C)
-outputNumerical = dielectric(numerical, C)
-outputCoupled = dielectric(coupled, C)
-outputRelativistic = dielectric(relativistic, C)
+outputCold = conductivity(cold, C)
+outputDelta = conductivity(delta, C)
+outputWarm = conductivity(warm, C)
+outputMaxwellian = conductivity(maxwellian, C)
+outputNumerical = conductivity(numerical, C)
+outputCoupled = conductivity(coupled, C)
+outputRelativistic = conductivity(relativistic, C)
 for i ∈ 1:3, j ∈ 1:3
   expected = outputCold[i, j]
   @test expected ≈ outputDelta[i, j] rtol=tol atol=tol
