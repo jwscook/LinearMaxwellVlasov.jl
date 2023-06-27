@@ -7,7 +7,7 @@ using LinearMaxwellVlasov
 const LMV = LinearMaxwellVlasov
 
 
-@testset "Cold Limit conductivitys" begin
+@testset "Cold Limit conductivities" begin
 
 mₑ = LMV.mₑ
 mi = 1836*mₑ
