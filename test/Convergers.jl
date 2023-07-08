@@ -1,8 +1,8 @@
 using Dates
 println("$(now()) $(@__FILE__)")
 
-using LinearMaxwellVlasov: converge
-using Test
+using LinearMaxwellVlasov: converge, fastisapprox
+using Test, LinearAlgebra
 
 @testset "Convergers" begin
   function f(n::Int)
@@ -25,6 +25,28 @@ using Test
   @test expected ≈ result rtol=sqrt(eps())
   result = converge(x->[g(x)])[1]
   @test expected ≈ result rtol=sqrt(eps())
+
+  @testset "fastisapprox" begin
+    yeses = 0
+    count = 0
+    for log10rtol in 0:5, log10atol in 0:5
+      for _ in 1:100
+        rtol = 10.0.^log10rtol * eps()
+        atol = 10.0.^log10atol * eps()
+        a = rand(ComplexF64, 3, 3)
+        b = deepcopy(a)
+        # the following means that approx half instances are approximately equal
+        b .+= rtol .* randn(ComplexF64, 3, 3) * norm(a) / 2
+        b .+= randn(ComplexF64, 3, 3) .* atol / 7
+        expected = isapprox(a, b; atol=atol, rtol=rtol, nans=true)
+        result = fastisapprox(a, b; atol=atol, rtol=rtol, nans=true)
+        @test result == expected
+        yeses += expected
+        count += 1
+      end
+    end
+    @assert 0.25 <= yeses / count <= 0.75
+  end
 end
 
 
