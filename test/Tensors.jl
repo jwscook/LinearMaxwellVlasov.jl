@@ -9,6 +9,7 @@ using Test
   include("tensors/AnalyticalVsNumerical.jl")
   include("tensors/NegativeKPara.jl")
   include("tensors/Basic.jl")
+  include("tensors/Brambilla.jl")
   include("tensors/RingBeamsAndPancakes.jl")
   include("tensors/CoupledVsSeparable.jl")
   include("tensors/RelativisticVsClassical.jl")
