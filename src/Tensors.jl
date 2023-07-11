@@ -71,7 +71,7 @@ function contribution(species::T, config::Configuration, cyclotronharmonic::Int,
   # F / T as third character in variable name stands for value / derivative
   # 2nd character q means that v_perp ^ q in the integrand
   # 3rd (& 4th) charcter (0, 1, _1) -> l + (0, 1, -1)
-  # final (& penultimate) charcter (0, 1, _1) -> n + (0, 1, -1)
+  # final (& penultimate) character (0, 1, _1) -> n + (0, 1, -1)
   ∫⊥s = perpendicularintegral(species, config, cyclotronharmonic)
   ⊥2T11_2⊥2T1_1⊥2T_1_1, ⊥3F11_2⊥3F1_1⊥3F_1_1, ⊥2T_1_1_⊥2T11,
     ⊥3F_1_1_⊥3F11, ⊥1T0_1_⊥1T10, ⊥2F0_1_⊥2F10, ⊥1T0_1⊥1T10, ⊥2F0_1⊥2F10,
