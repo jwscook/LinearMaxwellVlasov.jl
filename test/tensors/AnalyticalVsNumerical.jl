@@ -49,8 +49,8 @@ const LMV = LinearMaxwellVlasov
 #      ζ = kz * vthi / ω
       F = ComplexF64(ω, γ)
       C = Configuration(F, K, O)
-      time_a += @elapsed (ta = dielectric(M, C))
-      time_n += @elapsed (tn = dielectric(S, C))
+      time_a += @elapsed (ta = conductivity(M, C))
+      time_n += @elapsed (tn = conductivity(S, C))
       @test all(isapprox.(tn, ta, rtol=rtol, atol=atol))
       for i in 1:3, j in 1:3
         if !isapprox(tn[i, j], ta[i, j], rtol=rtol, atol=atol)
@@ -67,10 +67,10 @@ const LMV = LinearMaxwellVlasov
     C = Configuration(F, K)
     for Q ∈ (M, S)
       try
-        @inferred dielectric(Q, C)
+        @inferred conductivity(Q, C)
         @test true
       catch
-        @warn "dielectric not inferred for $(nameof(typeof(Q)))"
+        @warn "conductivity not inferred for $(nameof(typeof(Q)))"
         @test_broken false
       end
     end

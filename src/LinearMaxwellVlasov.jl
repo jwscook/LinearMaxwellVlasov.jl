@@ -49,7 +49,7 @@ export Cache
 # Plasmas
 export Plasma, NeutralPlasma, isneutral
 # Tensors
-export tensor, dielectric, electrostaticdielectric
+export tensor, dielectric, electrostatictensor, conductivity
 
 __precompile__(true) # precompile dependencies
 # precompile for species types

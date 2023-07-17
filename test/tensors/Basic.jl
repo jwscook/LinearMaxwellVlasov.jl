@@ -67,7 +67,7 @@ function performtest()
     K = Wavenumber(k=k, θ=0)
     C = Configuration((1.1 + 0.1*im)* Πe, K)
     output_tensor = tensor(S_num, C)[3,3]
-    output = electrostaticdielectric(S_num, C)
+    output = electrostatictensor(S_num, C)[3, 3]
     @test output_tensor ≈ output
   end
 
@@ -83,7 +83,7 @@ function performtest()
     config = Configuration(0 + im * Πe / 2,
                            Wavenumber(k=√3/2 * Πe / vbeam, θ=0.0))
     @test tensor(Plasma([left, right]), config)[3,3] ≈ 0 atol=eps()
-    @test electrostaticdielectric(Plasma([left, right]), config) ≈ 0 atol=eps()
+    @test electrostatictensor(Plasma([left, right]), config)[3, 3] ≈ 0 atol=eps()
   end
 end
 performtest()
