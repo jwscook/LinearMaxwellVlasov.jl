@@ -150,9 +150,9 @@ function perpendicular(S::AbstractKineticSpecies, C::Configuration, n::Integer)
     ⊥1T10 = (⊥2T1_1 + ⊥2T11) * k⊥_2nΩ
     ⊥1T0_1 = (⊥2T1_1 + ⊥2T_1_1) * k⊥_2nΩ
   end
-
+  # don't change this order; see test/integrals/Memoisation.jl
   return (⊥3F11, ⊥3F_1_1, ⊥3F1_1, ⊥2T11, ⊥2T_1_1, ⊥2T1_1, ⊥2F10, ⊥2F0_1,
-    ⊥1F00, ⊥1T10, ⊥1T0_1) # don't change this order
+    ⊥1F00, ⊥1T10, ⊥1T0_1)
 end
 
 # all the below is needed for memoisation
@@ -177,19 +177,23 @@ function (cp::CacheOp{GenericPerpendicularCacheOp})(x::T)::T where {U,T<:NTuple{
     (⊥3F11, ⊥3F_1_1, ⊥3F1_1, ⊥2T11, ⊥2T_1_1, ⊥2T1_1,  ⊥2F10,  ⊥2F0_1, ⊥1F00,
        ⊥1T10,  ⊥1T0_1) = x
     (⊥3F_1_1, ⊥3F11, ⊥3F1_1, ⊥2T_1_1, ⊥2T11, ⊥2T1_1, -⊥2F0_1, -⊥2F10, ⊥1F00,
-      -⊥1T0_1, -⊥1T10) # don't change
+      -⊥1T0_1, -⊥1T10)
+    # don't change this order; see test/integrals/Memoisation.jl
   else
     x
   end
   z = if cp.b
     (a, b, c, d, e, f,  g,  h, i,  j,  k) = y
-    (a, b, c, d, e, f, -g, -h, i, -j, -k) # don't change
+    (a, b, c, d, e, f, -g, -h, i, -j, -k)
+    # don't change this order; see test/integrals/Memoisation.jl
   else
     y
   end
   return cp.c ? conj.(z) : z
 end
 
+# not sure what to do in case of e.g. DualNumbers, so don't use optimisation
+makepositive(x) = x
 makepositive(x::Real) = abs2(x)
 makepositive(x::T) where {T<:Complex} = T(abs2(real(x)), abs2(imag(x)))
 
@@ -204,13 +208,15 @@ end
 function (cp::CacheOp{MaxwellianPerpendicularCacheOp})(x::T)::T where {U,T<:NTuple{11,U}}
   y = if cp.a
     (a, b,  c,  d, e, f,  g,  h, i, j, k) = x
-    (a, b, -c, -d, e, f, -g, -h, i, j, k) # don't change
+    (a, b, -c, -d, e, f, -g, -h, i, j, k)
+    # don't change this order; see test/integrals/Memoisation.jl
   else
     x
   end
   z = if cp.b
     (a, b, c, d,  e,  f,  g,  h, i, j, k) = y
-    (a, b, c, d, -e, -f, -g, -h, i, j, k) # don't change
+    (a, b, c, d, -e, -f, -g, -h, i, j, k)
+    # don't change this order; see test/integrals/Memoisation.jl
   else
     y
   end

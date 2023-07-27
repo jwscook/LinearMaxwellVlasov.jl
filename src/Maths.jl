@@ -10,6 +10,16 @@ function besselj(n::Integer, x::DualNumbers.Dual)
   return Dual(besselj(n, r), d * (besselj(n - 1, r) - besselj(n + 1, r)) / 2)
 end
 
+import SpecialFunctions.besselix
+function besselix(n::Integer, x::DualNumbers.Dual)
+  r, d = realpart(x), dualpart(x)
+  bix = besselix(n, r)
+  return Dual(bix,
+    d * ((besselix(n - 1, r) + besselix(n + 1, r)) / 2 - abs(real(r)) * bix))
+end
+
+
+
 #```math
 #\mathcal{Z_0}\left(z\right)=\frac{1}{\sqrt{\pi}}\int_{-\infty}^{\infty}\frac{\exp\left(-x^{2}\right)}{x-z}dx+\sigma i\sqrt{\pi}\exp\left(-z^{2}\right)=i\sqrt{\pi}\exp\left(-z^{2}\right)\mathrm{erfc}\left(-iz\right)
 #```

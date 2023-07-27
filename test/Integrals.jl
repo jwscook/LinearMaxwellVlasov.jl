@@ -15,4 +15,5 @@ using Test
   include("integrals/Perpendicular.jl")
   include("integrals/PerpendicularKeyAndFactor.jl")
   include("integrals/Perpendicular_maxwellian.jl")
+  include("integrals/Memoisation.jl")
 end
