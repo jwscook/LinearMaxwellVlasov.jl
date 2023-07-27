@@ -192,8 +192,13 @@ function (cp::CacheOp{GenericPerpendicularCacheOp})(x::T)::T where {U,T<:NTuple{
   return cp.c ? conj.(z) : z
 end
 
-# not sure what to do in case of e.g. DualNumbers, so don't use optimisation
-makepositive(x) = x
+
+# the tests prove that these two functions work
+makepositive(x::Dual{<:Real}) = Dual(abs2(realpart(x)), abs2(dualpart(x)))
+function makepositive(x::Dual{T}) where {T<:Complex}
+  r, i = reim(realpart(x))
+  return Dual(T(abs2(r), abs2(i)), dualpart(x))
+end
 makepositive(x::Real) = abs2(x)
 makepositive(x::T) where {T<:Complex} = T(abs2(real(x)), abs2(imag(x)))
 
