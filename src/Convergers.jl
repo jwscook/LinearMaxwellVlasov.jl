@@ -1,4 +1,4 @@
-using LoopVectorization
+using DualNumbers, LoopVectorization
 
 
 function fastisapprox(n, x, y, atol, rtol, nans)
@@ -10,8 +10,9 @@ function fastisapprox(A::Number, B::Number; atol, rtol, nans)
   x, y = abs2(A), abs2(B)
   return fastisapprox(n, x, y, atol, rtol, nans)
 end
+
 function fastisapprox(A::AbstractArray{T, N}, B::AbstractArray{T, N};
-    atol, rtol, nans) where {T<:Real, N}
+    atol, rtol, nans) where {T<:Union{Real,Dual{<:Real}}, N}
   n = x = y = zero(T)
   @turbo for i in eachindex(A, B)
     a, b = A[i], B[i]
@@ -23,7 +24,8 @@ function fastisapprox(A::AbstractArray{T, N}, B::AbstractArray{T, N};
 end
 
 function fastisapprox(A::AbstractArray{T, N}, B::AbstractArray{T, N};
-    atol, rtol, nans) where {U, T<:Complex{U}, N}
+    atol, rtol, nans) where {T<:Union{Complex, Dual{<:Complex}}, N}
+  U = promote_type(real(eltype(A)), real(eltype(B)))
   n = x = y = zero(U)
   AA, BB = reinterpret(U, A), reinterpret(U, B)
   @turbo for i in eachindex(AA, BB)
