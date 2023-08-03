@@ -1,5 +1,29 @@
 using StaticArrays, HCubature
 
+"""
+
+FCoupledVelocityNumerical
+
+A disribution function where vz and v⊥ are coupled, i.e. non-separable.
+
+...
+# Arguments
+- `F::T`: the distrubtion function
+- `normalisation::Tuple{U,U}`: the speeds used for normalisation in parallel and perp [m/s]
+- `lower::Float64`: minimum speed for integration bounds [m/s]
+- `upper::Float64`: maximum speed for integration bounds [m/s]
+...
+
+# Example
+```julia
+vth = 1e4
+vshell = 1e5
+fshell = FShell(vth, vshell)
+lower = vshell - 12 * vth # where the shell is zero
+upper = vshell + 12 * vth # where the shell is zero
+FCoupledVelocityNumerical(fshell, (vshell, vshell), lower, upper)
+```
+"""
 struct FCoupledVelocityNumerical{T<:Function, U<:Number
     } <: AbstractCoupledVelocity
   F::T
@@ -55,22 +79,85 @@ function integrate(F::AbstractCoupledVelocity)
     rtol=1e5eps(), atol=0.0))
 end
 
+
+"""
+    FShell(vth::Real,vshell::Real)
+
+The shell distribution function, as though f is only non-zero on or
+close to the surface of a sphere.
+
+...
+# Arguments
+- `vth::Real`: the thermal velocity of the shell [m/s]
+- `vshell::Real`: the speed of the shell [m/s]
+...
+
+# Example
+```julia
+```
+"""
 function FShell(vth::Real, vshell::Real)
   @assert vshell >= 0 "Shell speed, vshell, must be >= 0"
   @assert vth >= 0 "Thermal spread of the shell, vth, must be > 0"
   inv2vth² = 1 / 2 / vth^2
   funnormalised = v -> exp(-(sqrt(sum(x->x^2, v)) - vshell)^2 * inv2vth²)
+
+  lower = max(0.0, vshell - default_integral_range * vth)
+  upper = vshell + default_integral_range * vth
+
   funnormalisedpolar = transformtopolar(funnormalised)
   function fpolar_for_normalisation(vrθ)
     _, v⊥ = parallelperpfrompolar(vrθ)
     return 2π * v⊥ * vrθ[1] * funnormalisedpolar(vrθ)
   end
-  lower = max(0.0, vshell - default_integral_range * vth)
-  upper = vshell + default_integral_range * vth
   normalisation = HCubature.hcubature(fpolar_for_normalisation,
     [lower, -π/2], [upper, π/2], rtol=1e5eps(), atol=0.0, initdiv=10)[1]
+
   @assert isfinite(normalisation) && normalisation > 0
   F(vz, v⊥) = funnormalised(@SArray [vz, v⊥]) / normalisation
   characteristics = (vth + vshell, vth + vshell)
   return FCoupledVelocityNumerical(F, characteristics, lower, upper)
+end
+
+"""
+    FSlowingDown(vbeam::Real,vcrit::Real,vcutoffwidth::Real)
+
+The slowing down distribution
+
+...
+# Arguments
+- `vbeam::Real`: the beam speed [m/s]
+- `vcrit::Real`: the critival velocity [m/s]
+- `vcutoffwidth::Real`: the width of the error function used to smooth
+the distribution function at vbeam [m/s]
+...
+
+# Example
+```julia
+```
+"""
+function FSlowingDown(vbeam::Real, vcrit::Real, vcutoffwidth::Real)
+  @assert 0 < vbeam
+  @assert 0 < vcrit < vbeam
+  @assert 0 < vcutoffwidth
+  funnormalised(vz⊥) = funnormalised(vz⊥[1], vz⊥[2])
+  function funnormalised(vz, v⊥)
+    u = sqrt(vz^2 + v⊥^2)
+    return v⊥ / (u^3 + vcrit^3) * (1 + erf((vbeam - u) / vcutoffwidth)) / 2
+  end
+
+  upper = vbeam + default_integral_range * vcutoffwidth
+
+  funnormalisedpolar = transformtopolar(funnormalised)
+  function fpolar_for_normalisation(vrθ)
+    _, v⊥ = parallelperpfrompolar(vrθ)
+    return 2π * v⊥ * vrθ[1] * funnormalisedpolar(vrθ)
+  end
+  normalisation = HCubature.hcubature(fpolar_for_normalisation,
+    [0.0, -π/2], [upper, π/2], rtol=1e5eps(), atol=0.0, initdiv=10)[1]
+
+  @assert isfinite(normalisation) && normalisation > 0
+  F(vz, v⊥) = funnormalised(@SArray [vz, v⊥]) / normalisation
+  characteristics = (vbeam, vbeam)
+  return FCoupledVelocityNumerical(F, characteristics, 0.0, upper)
 end

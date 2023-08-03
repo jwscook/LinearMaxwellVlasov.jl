@@ -39,7 +39,7 @@ export Configuration
 # DistributionFunctions
 export FRing, FBeam, FParallelNumerical, FPerpendicularNumerical
 export FPerpendicularMaxwellian, FRelativisticNumerical
-export FCoupledVelocityNumerical, FShell
+export FCoupledVelocityNumerical, FShell, FSlowingDown
 export FParallelDiracDelta, FPerpendicularDiracDelta
 # Species
 export ColdSpecies, WarmSpecies, MaxwellianSpecies, RingBeamSpecies
