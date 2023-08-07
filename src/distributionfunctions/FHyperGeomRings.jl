@@ -30,7 +30,7 @@ struct FHyperGeomRing{T<:Number, U<:Number, V<:Number
     _uniqueid = hash((vth, vd), hash(:FHyperGeomRing))
     @assert vth > 0.0
     vchar = sqrt(vd^2 + vth^2)
-    t = sqrt(2) * vth # factor of √2 requied to make this similar the FRing
+    t = sqrt(2) * vth # factor of √2 requied to make this similar to FRing
     α = 1 / t^2
     p = 2 * vd^2 / t^2
     lognormconst = log(π * t^2) + p * log(t/vchar) + lgamma((p + 2)/2)
@@ -58,44 +58,40 @@ upper(f::FHyperGeomRing) = f.vd + default_integral_range * f.vth
 
 # Abramovtiz & Stegun Eq. 6.633.5
 function AbramSteg66335(λ, μ::Unsigned, ν::Unsigned, α, β)
-  @assert real(ν + λ + μ) > 0
+  @assert real(ν + λ + μ) > 0 "ν = $ν, λ = $λ, μ = $μ"
   @assert real(α) > 0
   halfsum = (ν+λ+μ)/2
-#  @show -β^2/α, α^(-halfsum), β^(ν + μ)
-  output = 1 / 2.0^(ν+μ+1) * α^(-halfsum) * β^(ν + μ)
-  output *= exp(lgamma(halfsum) - lgamma(μ + 1) - lgamma(ν + 1))
-  output *= HypergeometricFunctions.pFq(
+  common = α^(-halfsum) * β^(ν + μ)
+  logpart = lgamma(halfsum) - lgamma(μ + 1) - lgamma(ν + 1) - (ν+μ+1)*log(2.0)
+  hyp = HypergeometricFunctions.pFq(
     ((ν + μ + 1)/2, (ν + μ + 2)/2, halfsum),
     (μ + 1, ν + 1, μ + ν + 1), -β^2 / α)
-  @assert isfinite(output)
-  return output
+  nonlogpart = common * hyp
+  return (nonlogpart, logpart) # output = nonlogpart * exp(logpart)
 end
 
-function integrate(f::FHyperGeomRing, kernel::T,
-    ∂F∂v::Bool, tol::Tolerance=Tolerance()
-    ) where {T<:Function}
+function integrate(f::FHyperGeomRing, kernel::T, ∂F∂v::Bool,
+    tol::Tolerance=Tolerance()) where {T<:Function}
   β = kernel.k⊥_Ω
   μ, ν = kernel.μν
   sgnμ, μ = (μ < 0) ? (isodd(μ) ? -1 : 1, -μ) : (1, μ)
   sgnν, ν = (ν < 0) ? (isodd(ν) ? -1 : 1, -ν) : (1, ν)
   sgn = sgnμ * sgnν
   λ = kernel.power + f.p + 1
-  normalisation = sqrt(f.α)
-  α = f.α / normalisation^2 # normalised α (α has units of 1/velocity^2)
-  β /= normalisation # normalise β
-  @assert isfinite(normalisation^λ)
-  output = if ∂F∂v
+  nrm = sqrt(f.α) # the normalisation
+  α = f.α / nrm^2 # normalised α (α has units of 1/velocity^2)
+  β /= nrm # normalise β
+  logfactor = log(2π) - f.p * log(f.vchar) - f.lognormconst - λ * log(nrm)
+  if ∂F∂v
     # f = (v/u)^p * exp(-v^2/t^2)
     # df/dv = (p / v - 2 * v / t^2) * (v/u)^p * exp(-v^2/t^2) # α = 1 / t^2
-    factor = 1 / normalisation^λ
-    f1 = factor * normalisation
-    f2 = factor / normalisation
-    i1 = AbramSteg66335(λ - 1, Unsigned(μ), Unsigned(ν), α, β) * f.p * f1
-    i2 = AbramSteg66335(λ + 1, Unsigned(μ), Unsigned(ν), α, β) * 2f.α * f2
-    (i1 - i2)
+    nlp1, lp1 = AbramSteg66335(λ - 1, Unsigned(μ), Unsigned(ν), α, β)
+    nlp2, lp2 = AbramSteg66335(λ + 1, Unsigned(μ), Unsigned(ν), α, β)
+    return sgn * (nlp1 * exp(logfactor + lp1 + log(nrm)) * f.p -
+                  nlp2 * exp(logfactor + lp2 - log(nrm)) * 2f.α)
   else
-    AbramSteg66335(λ, Unsigned(μ), Unsigned(ν), α, β) / normalisation^λ
+    (nonlogpart, logpart) = AbramSteg66335(λ, Unsigned(μ), Unsigned(ν), α, β)
+    return sgn * nonlogpart * exp(logfactor + logpart)
   end
-  return output * exp(log(2π) - f.p * log(f.vchar) - f.lognormconst) * sgn
 end
 

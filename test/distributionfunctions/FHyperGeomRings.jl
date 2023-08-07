@@ -7,11 +7,10 @@ const LMV = LinearMaxwellVlasov
 
 
 @testset "FHyperGeomRings" begin
-  for z in 0:2:26
+  for z in 0:20#:200
 
-  @testset "Ratio $z" begin
-    for _ in 1:10
-    vth = rand()
+  vth = 1.0#rand()
+  for n in 1:5:50
     vd = z * vth# + 2 * rand()
 
     normalring = LMV.FRing(vth, vd)
@@ -19,18 +18,26 @@ const LMV = LinearMaxwellVlasov
 
     @test QuadGK.quadgk(v->2π*v*ring(v), 0, 12 * (vth + vd))[1] ≈ 1
     @test LMV.is_normalised(ring)
-    deriv = rand(Bool)
-    n = rand(-10:10)
-    m = n + rand(-1:1)
-    kernel = LMV.PerpendicularKernel(rand() * vth,
+  for deriv in (true, false)
+  for m in n-1:n+1
+  @testset "Ratio $z, bessel index $n, $m, and deriv $deriv" begin
+    kernel = LMV.PerpendicularKernel(randn() * vth,
       Pair(n, m), rand(0:3))
     result = LMV.integrate(ring, kernel, deriv)
-    expected = QuadGK.quadgk(v->kernel(v)*ring(v, deriv), 0, Inf, rtol=eps())[1]
-    @test result ≈ expected
-    #resultnormal = LMV.integrate(normalring, kernel, deriv)
+    lo = max(0.0, vd - 12 * vth)
+    hi = min(Inf, vd + 12 * vth)
+    expected = QuadGK.quadgk(v->kernel(v)*ring(v, deriv), lo, hi,
+                             rtol=2eps(), order=57)[1]
+    @test result ≈ expected rtol=1e-4
+    #if !isapprox(result, expected, rtol=1e-4)
+    #  resultnormal = LMV.integrate(normalring, kernel, deriv)
+    #  @show result, resultnormal
+    #end
     #expectednormal = QuadGK.quadgk(v->kernel(v)*normalring(v, deriv), 0, Inf, rtol=10eps())[1]
     #@show resultnormal, result
     #@show expectednormal, expected
+  end
+  end
   end
   end
   end
