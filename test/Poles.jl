@@ -54,4 +54,13 @@ end
     end
   end
 end
+@testset "isreal isfinite" begin
+  for r in (1.0, Inf), s in (-1, 0, 1)
+    @test !isreal(LMV.Pole(r + 1im, s))
+    @test isreal(LMV.Pole(r + 0im, s))
+  end
+  @test !isfinite(LMV.Pole(Inf + 0im, 1))
+  @test !isfinite(LMV.Pole(0 + Inf*im, 1))
+  @test !isfinite(LMV.Pole(Inf + Inf*im, 1))
+end
 end
