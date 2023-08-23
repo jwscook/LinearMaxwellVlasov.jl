@@ -46,7 +46,6 @@ include("./distributionfunctions/FPerpendicularMaxwellian.jl")
 include("./distributionfunctions/FPerpendicularNumericals.jl")
 include("./distributionfunctions/FBeams.jl")
 include("./distributionfunctions/FRings.jl")
-include("./distributionfunctions/FWideRings.jl")
 include("./distributionfunctions/FMomentum.jl")
 include("./distributionfunctions/FCoupledVelocity.jl")
 

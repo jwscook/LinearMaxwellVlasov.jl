@@ -41,7 +41,6 @@ export FRing, FBeam, FParallelNumerical, FPerpendicularNumerical
 export FPerpendicularMaxwellian, FRelativisticNumerical
 export FCoupledVelocityNumerical, FShell, FSlowingDown
 export FParallelDiracDelta, FPerpendicularDiracDelta
-export FWideRing
 # Species
 export ColdSpecies, WarmSpecies, MaxwellianSpecies, RingBeamSpecies
 export SeparableVelocitySpecies, CoupledVelocitySpecies, CoupledRelativisticSpecies
