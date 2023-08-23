@@ -13,7 +13,7 @@ function Pole(ω::Number, kparallel::Number, n::Integer, Ω::Number)
 end
 Pole(ω, K::Wavenumber, n, Ω) = Pole(ω, parallel(K), n, Ω)
 
-for op ∈ (:abs, :conj, :real, :imag, :reim, :isreal, :float)
+for op ∈ (:abs, :conj, :real, :imag, :reim, :isreal, :float, :isfinite)
   @eval Base.$op(f::Pole) = $op(f.pole)
 end
 Base.:-(x::Number, p::Pole) = x - p.pole

@@ -81,6 +81,7 @@ Random.seed!(0)
       kernel = LMV.PerpendicularKernel(σ * k⊥ / Ω, μν, Unsigned(pow))
       aE = LMV.integrate(A, kernel, ∂F∂v, tol)
       bE = LMV.integrate(B, kernel, ∂F∂v, tol)
+      # this one cN tests without the kernel
       cN = LMV.perpendicular(C, config, μ, ν, Unsigned(pow), ∂F∂v)
       @test isapprox(aE, aR)
       @test isapprox(bE, bR)

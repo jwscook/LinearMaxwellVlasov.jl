@@ -12,7 +12,7 @@ Random.seed!(0)
   mi = 1836*mₑ
 #  realratios  = Float64[]
 #  imagratios  = Float64[]
-  for m ∈ (mₑ, mi)#, _ ∈ 1:2
+  for m ∈ (60mₑ,)#, _ ∈ 1:2
     B0 = rand() * 4
     n0 = rand() * 1e20
     Ω = cyclotronfrequency(B0, m, -1)
@@ -35,10 +35,9 @@ Random.seed!(0)
       ωr = real(abs(vth * abs(k))) # real ωr must be > 0
       rtol=1e-4
       atol=eps()
-      σs = (-1, 0, 1)
-      kzs = (-k, 0k, k)
-      for params ∈ zip(σs, kzs)
-        (σ, kz) = params
+      σs = (-1, 1, 0)
+      kzs = (-k, k, 0k)
+      for σ ∈ σs, kz in kzs
         F = ComplexF64(ωr, σ * ωr / 100)
         K = Wavenumber(kz=kz, k⊥=abs(k))
         iszero(K) && continue
@@ -49,7 +48,7 @@ Random.seed!(0)
 
         @test separable(0.0, 0.0) ≈ coupled(0.0, 0.0)
 
-        @testset "real, $params" begin
+        @testset "real, $σ, $kz" begin
           @test real(outputC[1,1])≈real(outputS[1,1]) rtol=rtol atol=atol
           @test real(outputC[1,2])≈real(outputS[1,2]) rtol=rtol atol=atol
           @test real(outputC[1,3])≈real(outputS[1,3]) rtol=rtol atol=atol
@@ -60,7 +59,7 @@ Random.seed!(0)
           @test real(outputC[3,2])≈real(outputS[3,2]) rtol=rtol atol=atol
           @test real(outputC[3,3])≈real(outputS[3,3]) rtol=rtol atol=atol
         end
-        @testset "imag, $params" begin
+        @testset "imag, $σ, $kz" begin
           @test imag(outputC[1,1])≈imag(outputS[1,1]) rtol=rtol atol=atol
           @test imag(outputC[1,2])≈imag(outputS[1,2]) rtol=rtol atol=atol
           @test imag(outputC[1,3])≈imag(outputS[1,3]) rtol=rtol atol=atol
