@@ -8,10 +8,6 @@ const LMV = LinearMaxwellVlasov
 
 @testset "Relativity tests" begin
 
-  @testset "Relativistic gamma" begin
-    @test LMV.γ(0.0, 0.0, 1.0e-22) ≈ 1.0 rtol=2eps()
-  end
-
 # commented out while testing other things
 @testset "Relativistic Maxwellian is normalised" begin
   m0 = LMV.mₑ

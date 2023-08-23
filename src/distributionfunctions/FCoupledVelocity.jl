@@ -55,6 +55,7 @@ struct ShiftedMaxwellianCoupled{T,U,V,W,X} <: Function
   Fz::ShiftedMaxwellianParallel{T,U}
   F⊥::ShiftedMaxwellianPerpendicular{V,W,X}
 end
+# the following line gets missed by the coverage tool, but it is needed!
 (f::ShiftedMaxwellianCoupled)(v) = f.Fz(v[1]) * f.F⊥(v[2])
 (f::ShiftedMaxwellianCoupled)(vz, v⊥) = f.Fz(vz) * f.F⊥(v⊥)
 

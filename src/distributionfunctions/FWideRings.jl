@@ -17,6 +17,10 @@ using HypergeometricFunctions
 #π⋅t ⋅t ⋅u  ⋅Γ⎜─ + 1⎟
 #             ⎝2    ⎠
 
+function loggamma(x)
+  @assert x > 0
+  return first(logabsgamma(x))
+end
 struct FWideRing{T<:Number, U<:Number, V<:Number
     } <: AbstractFPerpendicularNumerical
   vth::T # thermal velocity
@@ -33,12 +37,16 @@ struct FWideRing{T<:Number, U<:Number, V<:Number
     _uniqueid = hash((vth, vd), hash(:FWideRing))
     @assert vth > 0.0
     vd > 0 || throw(ArgumentError("The drift velocity vd must be > 0"))
-    vd / vth > 20 && @warn "FWideRing is unreliable for vd / vth > 20. The current value is $(vd /vth)"
+    if eps(one(promote_type(T, U))) >= eps()
+      @info "FWideRing is most reliable for vth and vd of higher precision number types like BigFloat"
+      vd / vth > 20 && @warn "FWideRing is unreliable for vd / vth > 20.\nThe 
+      current value is $(vd /vth).\nTry passing in the parameters as BigFloat"
+    end
     vchar = sqrt(vd^2 + vth^2)
     t = sqrt(2) * vth # factor of √2 requied to make this similar to FRing
     α = 1 / t^2
     p = 2 * vd^2 / t^2
-    lognormconst = log(π * t^2) + p * log(t/vchar) + lgamma((p + 2)/2)
+    lognormconst = log(π * t^2) + p * log(t/vchar) + loggamma((p + 2)/2)
     @assert isfinite(lognormconst)
     nrm = sqrt(α) # the normalisation
     lognrm = log(nrm)
@@ -59,7 +67,6 @@ function (f::FWideRing)(v::T, ∂F∂v::Bool=false) where {T<:Number}
   end
   return output
 end
-(f::FWideRing)(∂F∂v::Bool=false) = v -> f(v, ∂F∂v)
 
 is_normalised(f::FWideRing) = true
 lower(f::FWideRing) = max(0.0, f.vd - default_integral_range * f.vth)
@@ -71,7 +78,8 @@ function AbramSteg66335(λ, μ::Unsigned, ν::Unsigned, α, β)
   @assert real(α) > 0
   halfsum = (ν+λ+μ)/2
   common = α^(-halfsum) * β^(ν + μ)
-  logpart = lgamma(halfsum) - lgamma(μ + 1) - lgamma(ν + 1) - (ν+μ+1)*log(2.0)
+  logpart = loggamma(halfsum) - loggamma(μ + 1) -
+    loggamma(ν + 1) - (ν+μ+1)*log(2.0)
   hyp = HypergeometricFunctions.pFq(
     ((ν + μ + 1)/2, (ν + μ + 2)/2, halfsum),
     (μ + 1, ν + 1, μ + ν + 1), -β^2 / α)

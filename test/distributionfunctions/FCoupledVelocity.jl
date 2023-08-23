@@ -8,7 +8,13 @@ const LMV = LinearMaxwellVlasov
 
 Random.seed!(0)
 
+@testset "Test FCoupledVelocityNumerical basic interface" begin
+  smc = LMV.FCoupledVelocityNumerical(1.0, 2.0).F
+  @test smc((1.0, 2.0)) == smc(1.0, 2.0)
+end
 @testset "Test CoupledVelocityNumerical Shell:" begin
+
+
 @testset "is normalised" begin
   for i ∈ 1:10
     vth = 2 * rand()
