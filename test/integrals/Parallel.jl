@@ -133,7 +133,7 @@ include("../species/NumericalSpecies.jl")
   function bigtest(speciesk0vth)
     (s, k0, vth) = speciesk0vth
 
-    ktmp = 10.0.^range(-2, stop=2, length=3)
+    ktmp = 10.0.^range(-3, stop=3, length=7)
 
     ωs = range(-3, stop=3, length=2) * ComplexF64(s.Π)
     ks = [-ktmp; 0.0; ktmp] * ComplexF64(k0)
@@ -141,7 +141,7 @@ include("../species/NumericalSpecies.jl")
     for params ∈ all_pairs(ks, ωs, -1:1, 0:2, (true, false))
       (kz, ω, n, pow, diffbool) = params
       diffbool && abs(pow) == 2 && continue
-      output = LMV.parallel(s.Fz, ω, kz, n, s.Ω, UInt64(pow), diffbool)
+      t1 = @elapsed output = LMV.parallel(s.Fz, ω, kz, n, s.Ω, UInt64(pow), diffbool)
       analytical = para_integral(s, ω, kz, n, UInt64(pow), diffbool, vth)
       Base.isnan(analytical) && continue
       @test output ≈ analytical  atol=1.0e-2 rtol=1.0e-2

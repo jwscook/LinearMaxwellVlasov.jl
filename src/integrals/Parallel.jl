@@ -12,7 +12,7 @@ Landau damping, so this case is made separate, as is easier to deal with.
 """
 function parallel(Fz::AbstractFParallelNumerical, ω::T,
     kz::U, n::Integer, Ω::Real, power::Unsigned, ∂F∂v::Bool,
-    tol::Tolerance=quadtol()) where {T<:Number, U<:Number}
+    tol::Tolerance=Tolerance()) where {T<:Number, U<:Number}
   nΩ = n * Ω
   pole = Pole((ω - nΩ) / kz, kz)
   V = complex(promote_type(typeof(nΩ - ω), typeof(kz))) # to get type stability
@@ -80,7 +80,7 @@ end
 Parallel integrals for the Beam - used for testing purposes
 """
 function parallel(Fz::FBeam, ω::T, kz::U, n::Integer,
-    Ω::Real, power::Unsigned, ∂F∂v::Bool, _::Tolerance=quadtol()
+    Ω::Real, power::Unsigned, ∂F∂v::Bool, _::Tolerance=Tolerance()
     ) where {T<:Number, U<:Number}
   return MaxwellianIntegralsParallel(Fz, ω, kz, n * Ω)(power, ∂F∂v)
 end

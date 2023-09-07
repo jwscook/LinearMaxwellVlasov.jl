@@ -118,3 +118,4 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies,
   end
   return result
 end
+

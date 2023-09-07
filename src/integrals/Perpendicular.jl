@@ -23,7 +23,7 @@ Calculate the definite integral kernels of the perpenedicular distribution
 function, or derivative thereof, multiplied by the kernel functions
 """
 function perpendicular(F⊥::AbstractFPerpendicular, Ω::Real, μν::Pair{T, T},
-    k⊥::Number, power::Unsigned, ∂F∂v::Bool, tol::Tolerance=quadtol()
+    k⊥::Number, power::Unsigned, ∂F∂v::Bool, tol::Tolerance=Tolerance()
     ) where {T<:Integer}
   kernel = PerpendicularKernel(k⊥ / Ω, μν, power)
   output = integrate(F⊥, kernel, ∂F∂v, tol)

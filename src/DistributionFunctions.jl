@@ -56,14 +56,13 @@ upper(f::AbstractDistributionFunction) = f.upper
 Integration of Abstract Arbitrary FParallel
 """
 function integrate(f::AbstractFParallelNumerical, ∂F∂v::Bool=false,
-    tol::Tolerance=Tolerance(sqrt(eps())))
+    tol::Tolerance=Tolerance())
   integrand = f(∂F∂v) # TODO
   return quadrature(integrand, f.lower, f.upper, rtol=tol.rel,
     atol=tol.abs, order=quadorder_para, norm=quadnorm)[1]
 end
 function integrate(f::AbstractFParallelNumerical, numerator_kernel::T,
-    ∂F∂v::Bool, tol::Tolerance=Tolerance(sqrt(eps()))
-    ) where {T<:Function}
+    ∂F∂v::Bool, tol::Tolerance=Tolerance()) where {T<:Function}
   # No pole on this integral, therefore no residue
   fv = f(∂F∂v) # TODO
   integrand(v) = fv(v) * numerator_kernel(v)
@@ -94,10 +93,12 @@ function integrate(f::AbstractFParallelNumerical, numerator_kernel::T,
     limits[1] = min(limits[1], real(pole) - Δ_2)
     limits[2] = max(limits[2], real(pole) + Δ_2)
   end
+
   limits = unique(sort(limitsfolder(limits, real(pole))))
   @assert 2 <= length(limits) <= 3
   principal = first(quadrature(integrand, limits[1], limits[2],
     rtol=tol.rel, atol=tol.abs, order=quadorder_para, norm=quadnorm))
+
   if length(limits) == 3 # can't use limits... due to weird type instability
     principal += first(quadrature(integrand, limits[2], limits[3],
       rtol=tol.rel, atol=tol.abs, order=quadorder_para, norm=quadnorm))
