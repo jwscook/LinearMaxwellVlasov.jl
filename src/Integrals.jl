@@ -1,6 +1,4 @@
 
-quadtol() = Tolerance(eps(Float64), zero(Float64))
-
 # Everything below, except the includes, is for memoising the parallel
 # and perpendicular integrals
 
