@@ -133,94 +133,125 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
   function integrand(vz, v⊥)
     a = (ω - kz * vz) / Ω
     z = k⊥ * v⊥ / Ω
+    @assert !iszero(z)
+    @assert !iszero(a)
+#    duala = besselj(a, Dual(z, 1))
+#    Ja = DualNumbers.realpart(duala)
+#    Jad = DualNumbers.dualpart(duala)
+#    dual_a = besselj(-a, Dual(z, 1))
+#    J_a = DualNumbers.realpart(dual_a)
+#    J_ad = DualNumbers.dualpart(dual_a)
     Ja = besselj(a, z)
     J_a = besselj(-a, z)
     Jad = (besselj(a - 1, z) - besselj(a + 1, z)) / 2
+    Jad = isfinite(Jad) ? Jad : DualNumbers.dualpart(besselj(a, Dual(z, 1)))
     J_ad = (besselj(-a - 1, z) - besselj(-a + 1, z)) / 2
+    J_ad = isfinite(J_ad) ? J_ad : DualNumbers.dualpart(besselj(-a, Dual(z, 1)))
+
+    @assert isfinite(Ja)
+    @assert isfinite(J_a)
+    @assert isfinite(Jad) "$Ja, $Jad"
+    @assert isfinite(J_ad) "$J_a, $J_ad"
     π_sinπa = π / sinpi(a)
+    @assert isfinite(π_sinπa)
     dfdvz = DualNumbers.dualpart(S(Dual(vz, 1), v⊥))
     dfdv⊥ = DualNumbers.dualpart(S(vz, Dual(v⊥, 1)))
-    Q = a * π_sinπa * J_a * Ja # Eq 33
-    Qd = a * π_sinπa * (J_ad * Ja + J_a * Jad) # Eq 33
-    Xzz = 2π * Ω / ω * vz * (v⊥ * dfdvz - vz * dfdv⊥) # Eq 34, part
-    U = (kz / ω * v⊥ * dfdvz  + (1 - kz / ω * vz) * dfdv⊥) # Eq 4
-    T11 = a / z^2 * (Q - 1) * U
-    T12 = im / 2z * Qd * U
-    T13 = (Q - 1) / z * vz / v⊥ * U
+    Q_a = π_sinπa * J_a * Ja # Eq 33
+    Qd_a = π_sinπa * (J_ad * Ja + J_a * Jad) # Eq 33
+    Xzz = 2π * Ω * vz * (v⊥ * dfdvz - vz * dfdv⊥) / Ω # Part of Eq 34 (x'ed by ω/Ω)
+    U = (kz * v⊥ * dfdvz + (ω - kz * vz) * dfdv⊥) / Ω # Eq 4 (multiplied by ω/Ω)
+    T11 = a / z^2 * (a * Q_a - 1) * v⊥^2
+    T12 = im / 2z * a * Qd_a * v⊥^2
+    T13 = (a * Q_a - 1) / z * vz * v⊥
+    T22 = (π_sinπa * J_ad * Jad + a / z^2) * v⊥^2
+    T23 = - vz * im / 2 * Qd_a * v⊥
+    T33 = Q_a * vz^2
     T21 = -T12
-    T22 = (π_sinπa * J_ad * Jad + a / z^2) * U
-    T23 = im / 2 * (dfdvz / a + k⊥ / ω * (v⊥ * dfdvz - vz * dfdv⊥) / z) * Qd # Eq 28, 32, 9
     T31 = T13
-    T32 = -T23 #im / 2a * Qd
-    T33 = Q / a * (vz / v⊥)^2 * U
+    T32 = -T23
     T = @MArray [T11 T12 T13; T21 T22 T23; T31 T32 T33]
-    Xij = (2π * v⊥^2) .* T # Eq 34, part
+    @assert all(isfinite, T) "$T"
+    Xij = (2π * U) .* T # Eq 34, part
     Xij[3, 3] += Xzz
-    return ω / Ω * Xij # Eq 34
+    return Xij# Eq 34 (U is multiplied by ω)
   end
 
   lower = max(S.F.lower, eps())
 
   function integral2D()
-    ∫dvrdθ(vrθ) = vrθ[1] * integrand(parallelperpfrompolar(vrθ))
-    return first(HCubature.hcubature(∫dvrdθ,
-      (lower, -π / 2), (S.F.upper, π / 2), initdiv=64,
+    return first(HCubature.hcubature(integrand,
+      (-S.F.upper, lower), (S.F.upper, S.F.upper), initdiv=128,
       rtol=C.options.quadrature_tol.rel, atol=C.options.quadrature_tol.abs))
+    #∫dvrdθ(vrθ) = vrθ[1] * integrand(parallelperpfrompolar(vrθ))
+    #return first(HCubature.hcubature(∫dvrdθ,
+    #  (lower, -π / 2), (S.F.upper, π / 2), initdiv=16,
+    #  rtol=C.options.quadrature_tol.rel, atol=C.options.quadrature_tol.abs))
   end
 
-  function principalzerokz(v⊥)
-    @assert iszero(kz)
-    ∫dvz(x) = integrand((x, v⊥))
-    output = first(QuadGK.quadgk(∫dvz, -S.F.upper, S.F.upper, order=32,
-      atol=C.options.quadrature_tol.abs,
-      rtol=C.options.quadrature_tol.rel / 10))
-    @assert !any(isnan, output)# "v⊥ = $v⊥, output = $output"
-    return output
-  end
+  return integral2D()
+  #function principalzerokz(v⊥)
+  #  @assert iszero(kz)
+  #  ∫dvz(x) = integrand((x, v⊥))
+  #  output = first(QuadGK.quadgk(∫dvz, -S.F.upper, S.F.upper, order=32,
+  #    atol=C.options.quadrature_tol.abs,
+  #    rtol=C.options.quadrature_tol.rel / 10))
+  #  @assert !any(isnan, output)# "v⊥ = $v⊥, output = $output"
+  #  return output
+  #end
 
-  pole = Pole(C.frequency, C.wavenumber, 0, S.Ω)
-  polefix = wavedirectionalityhandler(pole)
+  #pole = Pole(C.frequency, C.wavenumber, 0, S.Ω)
+  #polefix = wavedirectionalityhandler(pole)
 
-  function principal(v⊥)
-    @assert !iszero(kz)
-    ∫folded = foldnumeratoraboutpole(x->integrand((x, v⊥)), float(pole))
-    output = first(QuadGK.quadgk(∫folded, lower, S.F.upper, order=32,
-        atol=C.options.quadrature_tol.abs,
-        rtol=max(eps(), C.options.quadrature_tol.rel / 10)))
-    @assert !any(isnan, output)# "v⊥ = $v⊥, output = $output"
-    return output
-  end
+  #function principal(v⊥)
+  #  @assert !iszero(kz)
+  #  ∫folded = foldnumeratoraboutpole(x->integrand((x, v⊥)), float(pole))
+  #  output = first(QuadGK.quadgk(∫folded, lower, S.F.upper, order=32,
+  #      atol=C.options.quadrature_tol.abs,
+  #      rtol=max(eps(), C.options.quadrature_tol.rel / 10)))
+  #  @assert !any(isnan, output)# "v⊥ = $v⊥, output = $output"
+  #  return output
+  #end
 
-  function coupledresidue(v⊥)
-    # this started life in relativistic version - can it be simplified?
-    ∫dvz(x) = integrand((x, v⊥))
-      ppradius = (iszero(imag(pole)) ? abs(pole) : abs(imag(pole))) * sqrt(eps())
-      pp = principalpartadaptive(∫dvz, pole, ppradius, 64,
-        C.options.summation_tol, Nmax=2048)
-      output = polefix.(residue(pp, polefix(pole)))
-      output = sign(real(kz)) .* real(output) .+ im .* imag(output)
-      @assert !any(isnan, output)# "v⊥ = $v⊥, pp = $pp, pole = $pole"
-    return output
-  end
+  #function coupledresidue(v⊥)
+  #  # this started life in relativistic version - can it be simplified?
+  #  ∫dvz(x) = integrand((x, v⊥))
+  #  function allresidues(n)
+  #    pole = Pole(C.frequency, C.wavenumber, n, S.Ω)
+  #    polefix = wavedirectionalityhandler(pole)
+  #    ppradius = (iszero(imag(pole)) ? abs(pole) : abs(imag(pole))) * sqrt(eps())
+  #    pp = principalpartadaptive(∫dvz, pole, ppradius, 64,
+  #      C.options.summation_tol, Nmax=2048)
+  #    output = polefix.(residue(pp, polefix(pole)))
+  #    output = sign(real(kz)) .* real(output) .+ im .* imag(output)
+  #    @assert !any(isnan, output)# "v⊥ = $v⊥, pp = $pp, pole = $pole"
+  #    return output
+  #  end
+  #  return converge(allresidues, C.options.summation_tol)
+  #end
 
-  function integralsnested1D(∫dv⊥::T, nrm=1) where T
-    return first(QuadGK.quadgk(∫dv⊥, lower, S.F.upper, order=32,
-      atol=max(C.options.quadrature_tol.abs,
-               C.options.quadrature_tol.rel * nrm / 2),
-      rtol=C.options.quadrature_tol.rel))
-  end
+  #function integralsnested1D(∫dv⊥::T, nrm=1) where T
+  #  return first(QuadGK.quadgk(∫dv⊥, lower, S.F.upper, order=32,
+  #    atol=max(C.options.quadrature_tol.abs,
+  #             C.options.quadrature_tol.rel * nrm / 2),
+  #    rtol=C.options.quadrature_tol.rel))
+  #end
 
-#  @show isreal(kz * ω), iszero(kz)
-  result = if isreal(kz * ω) && iszero(kz)
-    integralsnested1D(principalzerokz)
-  elseif isreal(kz * ω)# && !iszero(kz)
-    pp = integralsnested1D(principal)
-    pp .+ integralsnested1D(coupledresidue, norm(pp))
-  elseif !iszero(kz) # && !isreal(pole)
-    i2d = integral2D()
-    i2d .+ integralsnested1D(coupledresidue, norm(i2d))
-  else # iszero(kz) && !isreal(pole)
-    integral2D() # works
-  end
-  return result
+  #result = if isreal(pole) && iszero(kz)
+  #  @show "principalzerokz"
+  #  integralsnested1D(principalzerokz)
+  #elseif isreal(pole)# && !iszero(kz)
+  #  @show "principal + coupledresidue"
+  #  pp = integralsnested1D(principal)
+  #  @show integralsnested1D(coupledresidue, norm(pp))
+  #  pp .+ integralsnested1D(coupledresidue, norm(pp))
+  #elseif !iszero(kz) # && !isreal(pole)
+  #  @show "integral2D + coupledresidue"
+  #  i2d = integral2D()
+  #  @show integralsnested1D(coupledresidue, norm(i2d))
+  #  i2d .+ integralsnested1D(coupledresidue, norm(i2d))
+  #else # iszero(kz) && !isreal(pole)
+  #  @show "integral2D"
+  #  integral2D()
+  #end
+  #return result
 end
