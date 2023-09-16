@@ -15,8 +15,8 @@ Random.seed!(0)
   for m ∈ (60mₑ,)#, _ ∈ 1:2
     B0 = rand() * 4
     n0 = rand() * 1e20
-    Ω = cyclotronfrequency(B0, m, -1)
-    Π = plasmafrequency(n0, m, -1)
+    Ω = cyclotronfrequency(B0, m, 1)
+    Π = plasmafrequency(n0, m, 1)
     Va = sqrt(B0^2 / LMV.μ₀ / n0 / mi)
     ϵV = rand() * 1.0e4
     vth = thermalspeed(ϵV, m)
@@ -33,15 +33,16 @@ Random.seed!(0)
                                 (coupledMaxwellian, separableMaxwellian),
                                 #(coupledRingBeam, separableRingBeam),
                                )
-      k = Ω / Va / 2
+      k = abs(Ω / Va / 2)
       ωr = real(abs(vth * abs(k))) # real ωr must be > 0
       rtol=1e-4
       atol=eps()
-      σs = (-1, )#-0.1, -0.01, -1e-3,) #1e-3, 1e-2, 1e-1, 1.0)#, 0
-      kzs = (-3k/2, -1.1*k)#-k, -k/10, -k/100)
-      for kz in kzs, σ ∈ σs
+      σs = (-1, 1)#-0.1, -0.01, -1e-3,) #1e-3, 1e-2, 1e-1, 1.0)#, 0
+      kzs = (2k, k, k/2, 0, -k/2, -k, -2k)#-k, -k/10, -k/100)
+      k⊥s = (k/2, k, 2k)#-k, -k/10, -k/100)
+      for σ ∈ σs, kz in kzs, k⊥ in k⊥s
         F = ComplexF64(ωr, σ * ωr / 100)
-        K = Wavenumber(kz=kz, k⊥=abs(k))
+        K = Wavenumber(kz=kz, k⊥=k⊥)
         iszero(K) && continue
         config = Configuration(F, K)
         config.options = Options(quadrature_rtol=1.0e-9, summation_rtol=1e-8)
@@ -72,25 +73,31 @@ Random.seed!(0)
         #  @test imag(outputC[3,2])≈imag(outputS[3,2]) rtol=rtol atol=atol
         #  @test imag(outputC[3,3])≈imag(outputS[3,3]) rtol=rtol atol=atol
         #end
+        #(iszero(imag(F)) && iszero(kz)) && continue
 
         config.options = Options(quadrature_rtol=1.0e-15, summation_rtol=4eps())
 
         t0 = @elapsed summed = LMV.contribution(separable, config)
         #try
-          config.options = Options(quadrature_rtol=1.0e-5)
+          config.options = Options(quadrature_rtol=1.0e-5, quadrature_atol=1e-64)
           t1 = @elapsed newberger = LMV.coupledvelocity(coupled, config)
-          ratio = newberger ./ summed
-          for i in eachindex(ratio)
-            @show ratio[i]
+          if !isapprox(summed, newberger, rtol=1e-4)
+            ratio = newberger ./ summed
+            for i in eachindex(ratio)
+              @show ratio[i], abs(ratio[i])
+            end
+            @show σ, k, t1 / t0
           end
-          @show σ, k, t1 / t0
           @testset "newberger, $σ, $kz" begin
             @test isapprox(summed, newberger, rtol=1e-4)
           end
           #t0 = @elapsed LMV.converge(n->LMV.coupledvelocity(coupled, config, n))
           #@show t1 / t0
-        #catch
-        #  @test false
+        #catch err
+        #  @show err
+        #  @testset "newberger, $σ, $kz, fail" begin
+        #    @test false
+        #  end
         #end
       end
     end
