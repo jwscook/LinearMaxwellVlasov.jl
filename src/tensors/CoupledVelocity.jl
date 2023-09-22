@@ -119,7 +119,6 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies,
   return result
 end
 
-
 function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
   ω, Ω = C.frequency, S.Ω
   @assert !iszero(Ω)
@@ -156,9 +155,8 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
     J_ad = isfinite(J_ad) ? J_ad : -besselj(-a, z) * a / z - besselj(-a + 1, z)
     J_ad = isfinite(J_ad) ? J_ad : DualNumbers.dualpart(besselj(-a, Dual(z, 1)))
 
-    if !isfinite(Ja + J_a + Jad + J_ad)
-      @show a, z, Ja, J_a, Jad, J_ad
-    end
+    isfinite(Ja + J_a + Jad + J_ad) || @show a, z, Ja, J_a, Jad, J_ad
+
     @assert isfinite(Ja)
     @assert isfinite(J_a)
     @assert isfinite(Jad)
@@ -187,61 +185,50 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
 
   function integral2D()
     return first(HCubature.hcubature(integrand,
-      (-S.F.upper/2, lower), (S.F.upper/2, S.F.upper/2), initdiv=128,
+      (-S.F.upper, lower), (S.F.upper, S.F.upper), initdiv=128,
       rtol=C.options.quadrature_tol.rel, atol=C.options.quadrature_tol.abs))
-    #∫dvrdθ(vrθ) = vrθ[1] * integrand(parallelperpfrompolar(vrθ))
-    #return first(HCubature.hcubature(∫dvrdθ,
-    #  (lower, -π / 2), (S.F.upper, π / 2), initdiv=16,
-    #  rtol=C.options.quadrature_tol.rel, atol=C.options.quadrature_tol.abs))
   end
-  #return integral2D()
 
-  #function principalzerokz(v⊥)
-  #  @assert iszero(kz)
-  #  ∫dvz(x) = integrand((x, v⊥))
-  #  output = first(QuadGK.quadgk(∫dvz, -S.F.upper, S.F.upper, order=7,
-  #    atol=C.options.quadrature_tol.abs,
-  #    rtol=C.options.quadrature_tol.rel / 10))
-  #  @assert !any(isnan, output)# "v⊥ = $v⊥, output = $output"
-  #  return output
-  #end
-
-  function principal(v⊥)
+  #=
+  # this almost works!
+  function principal()
     @assert !iszero(kz)
     @assert iszero(imag(kz)) || iszero(imag(ω))
-    ∫dvz(x) = integrand((x, v⊥))
     function allprincipals(n)
       # (ω - kz * vz) / Ω = n
       # vz = (ω - n Ω) / kz
       # vz = ( (ω - n Ω) / kz ... (ω - (n+1) Ω) / kz)
       limits = sort(real.([(ω - n * Ω) / kz, (ω - (n + 1) * Ω)/kz]))
-      limits[1] += 10max(eps(eltype(limits)), eps(limits[1]))# * abs(Ω / kz)
-      limits[2] -= 10max(eps(eltype(limits)), eps(limits[2]))# * abs(Ω / kz)
+      limits[1] += 10max(eps(eltype(limits)), eps(limits[1]))
+      limits[2] -= 10max(eps(eltype(limits)), eps(limits[2]))
       μ = sum(limits)/2
       Δ = limits[2] - limits[1]
       @assert !isinteger(real((ω - kz * limits[1]) / Ω))
       @assert !isinteger(real((ω - kz * limits[2]) / Ω))
-      foldinharmonic(x) = (∫dvz(x * Δ + μ) + ∫dvz(-x* Δ + μ)) * Δ
-      output = first(QuadGK.quadgk(foldinharmonic, eps(), 0.5, order=7,
-        atol=C.options.quadrature_tol.abs,
-        rtol=C.options.quadrature_tol.rel))
+      foldinharmonic(xv⊥) = foldinharmonic(xv⊥...)
+      foldinharmonic(x, v⊥) = (integrand(x * Δ + μ, v⊥) .+
+                               integrand(-x* Δ + μ, v⊥)) .* Δ
+      output = first(HCubature.hcubature(foldinharmonic,
+        (eps(), S.F.lower), (0.5, S.F.upper), initdiv=128,
+        rtol=C.options.quadrature_tol.rel, atol=C.options.quadrature_tol.abs))
       @assert !any(isnan, output)# "v⊥ = $v⊥, output = $output"
       return output
     end
     return converge(allprincipals, C.options.summation_tol)
   end
+  =#
 
   function coupledresidue(v⊥)
     # this started life in relativistic version - can it be simplified?
-    ∫dvz(x) = integrand((x, v⊥))
     function allresidues(n)
       pole = Pole(C.frequency, C.wavenumber, n, S.Ω)
       polefix = wavedirectionalityhandler(pole)
       residuesigma(polefix(pole)) == 0 && return 0.0
       ppradius = (iszero(imag(pole)) ? abs(pole) : abs(imag(pole))) * sqrt(eps())
-      pp = principalpartadaptive(∫dvz, pole, ppradius, 64,
+      ppa = principalpartadaptive(vz->integrand((vz, v⊥)),
+        pole, ppradius, 64,
         C.options.quadrature_tol, Nmax=2048)
-      output = polefix.(residue(pp, polefix(pole)))
+      output = polefix.(residue(ppa, polefix(pole)))
       output = sign(real(kz)) .* real(output) .+ im .* imag(output)
       @assert !any(isnan, output)# "v⊥ = $v⊥, pp = $pp, pole = $pole"
       return output
@@ -256,36 +243,23 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
       rtol=C.options.quadrature_tol.rel))
   end
 
-
-#  result = if imag(ω) < 0
-#    i2d = integral2D()
-#    i2d .+ integralsnested1D(coupledresidue, norm(i2d))
-#  elseif iszero(imag(ω)) && iszero(imag(kz))
-#    pp = integralsnested1D(principal)
-#    pp .+ integralsnested1D(coupledresidue, norm(pp))
-#  else
-#    integral2D()
-#  end
-#  return result
-
-  anypolesarereal = isreal(ω) || isreal(kz)
-
   result = if iszero(kz)
-    @show "principalzerokz"
-    #integralsnested1D(principalzerokz)
     integral2D()
-  elseif isreal(ω) && isreal(kz) # && !iszero(kz)
-    @warn "Nested 1D integrals of the principal part intractably slow"
-    pp = integralsnested1D(principal)
-    pp .+ integralsnested1D(coupledresidue, norm(pp))
-    #integral2D()
-  elseif !iszero(kz) # && !anypolesarereal
-    @show "integral2D + coupledresidue"
+  elseif !iszero(kz) && !iszero(imag(ω))
     i2d = integral2D()
     i2d .+ integralsnested1D(coupledresidue, norm(i2d))
-  else # iszero(kz) && !isreal(pole0)
-    @show "integral2D"
+  elseif !isreal(ω) || !isreal(kz)
     integral2D()
+  else
+    @assert isreal(ω) && isreal(kz)
+    @warn "Nested 1D integrals of the principal part intractably slow"
+    #throw(ArgumentError("I haven't figured out how to process real poles yet\n
+    #                    Give ω or kz a non-zero imaginary component"))
+    # this bit isn't right, from here...
+    #pp = principal()
+    #pp .+ integralsnested1D(coupledresidue, norm(pp))
+    # ... to here
+    converge(n->coupledvelocity(S, C, n), C.options.summation_tol)
   end
   return result
 end

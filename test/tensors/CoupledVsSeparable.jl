@@ -37,9 +37,9 @@ Random.seed!(0)
       ωr = real(abs(vth * abs(k))) # real ωr must be > 0
       rtol=1e-4
       atol=eps()
-      σs = (-1, 1)#-0.1, -0.01, -1e-3,) #1e-3, 1e-2, 1e-1, 1.0)#, 0
+      σs = (0, -1, 1)#-0.1, -0.01, -1e-3,) #1e-3, 1e-2, 1e-1, 1.0)#, 0
       kzs = (2k, k, k/2, 0, -k/2, -k, -2k)#-k, -k/10, -k/100)
-      k⊥s = (k/2, k, 2k)#-k, -k/10, -k/100)
+      k⊥s = (k, k/2, k, 2k)
       for σ ∈ σs, kz in kzs, k⊥ in k⊥s
         F = ComplexF64(ωr, σ * ωr / 100)
         K = Wavenumber(kz=kz, k⊥=k⊥)
@@ -79,7 +79,8 @@ Random.seed!(0)
 
         t0 = @elapsed summed = LMV.contribution(separable, config)
         #try
-          config.options = Options(quadrature_rtol=1.0e-5, quadrature_atol=1e-64)
+          config.options = Options(quadrature_rtol=1.0e-5, quadrature_atol=1e-64,
+                                   summation_rtol=1e-12)
           t1 = @elapsed newberger = LMV.coupledvelocity(coupled, config)
           if !isapprox(summed, newberger, rtol=1e-4)
             ratio = newberger ./ summed
@@ -88,7 +89,7 @@ Random.seed!(0)
             end
             @show σ, k, t1 / t0
           end
-          @testset "newberger, $σ, $kz" begin
+          @testset "newberger, $σ, $kz, $k⊥" begin
             @test isapprox(summed, newberger, rtol=1e-4)
           end
           #t0 = @elapsed LMV.converge(n->LMV.coupledvelocity(coupled, config, n))
