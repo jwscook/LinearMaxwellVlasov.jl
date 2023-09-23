@@ -34,8 +34,8 @@ numerical = SeparableVelocitySpecies(Πi, Ωi,
 coupled = CoupledVelocitySpecies(Πi, Ωi, vth, vth)
 relativistic = CoupledRelativisticSpecies(Πi, Ωi, mi, vth * mi)
 
-k = Ωi / vth # tests for num and gyro fail if no multiply by 10
-ω = k * vth * 100
+k = Ωi / vth
+ω = k * vth * 20
 γ = ω / 100
 K = Wavenumber(k=k, θ=π/5)
 F = ComplexF64(ω, γ)
@@ -49,6 +49,8 @@ outputDelta = conductivity(delta, C)
 outputWarm = conductivity(warm, C)
 outputMaxwellian = conductivity(maxwellian, C)
 outputNumerical = conductivity(numerical, C)
+O = Options(rtols=1e-8)
+C = Configuration(F, K, O)
 outputCoupled = conductivity(coupled, C)
 outputRelativistic = conductivity(relativistic, C)
 for i ∈ 1:3, j ∈ 1:3

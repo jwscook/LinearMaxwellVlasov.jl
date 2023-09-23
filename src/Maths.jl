@@ -79,7 +79,8 @@ and returns a new function that returns x when integrated between real(pole)
 and +Inf.
 """
 function foldnumeratoraboutpole(f::T, pole::Real) where {T<:Function}
-  folded(v) = (f(v + pole) - f(-v + pole)) / v
+  folded(v::Number) = (f(v + pole) - f(-v + pole)) / v
+  folded(v) = (f(v[1] + pole, v[2]) - f(-v[1] + pole, v[2])) / v[1]
   return folded
 end
 function foldnumeratoraboutpole(f::T, pole::Number) where {T<:Function}
