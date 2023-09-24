@@ -31,8 +31,7 @@ We avoid doing integrals involving the derivative of the Dirac delta function
 by doing integral by parts and knowing that f-> 0 and the integral limits
 """
 function integrate(f::FParallelDiracDelta, kernel::T, ∂F∂v::Bool,
-    ignored_tol::Tolerance=Tolerance()
-    ) where {T<:Function}
+    _::Tolerance=Tolerance()) where {T<:Function}
   return ∂F∂v ? -derivative(kernel, f.v_drift) : kernel(f.v_drift)
 end
 
@@ -58,8 +57,7 @@ We avoid doing integrals involving the derivative of the Dirac delta function
 by doing integral by parts and knowing that f-> 0 and the integral limits
 """
 function integrate(f::FPerpendicularDiracDelta, kernel::T,
-    ∂F∂v::Bool, ignored_tol::Tolerance=Tolerance()
-    ) where {T<:Function}
+    ∂F∂v::Bool, _::Tolerance=Tolerance()) where {T<:Function}
   op(x) = ∂F∂v ? -derivative(kernel, x) : kernel(x)
   output = op(f.v_drift) * f.inv2πv_drift
   @assert !any(isnan, output) "$output, $∂F∂v, $(f.v_drift)"
