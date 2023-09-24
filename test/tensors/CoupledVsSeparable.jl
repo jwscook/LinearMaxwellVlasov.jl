@@ -1,7 +1,7 @@
 using Dates
 println("$(now()) $(@__FILE__)")
 
-using Test, Random
+using Test, Random, DualNumbers, SpecialFunctions
 using LinearMaxwellVlasov
 const LMV = LinearMaxwellVlasov
 
@@ -28,6 +28,11 @@ Random.seed!(0)
     argsR = 2 * rand(4) * vth
     coupledRingBeam = CoupledVelocitySpecies(Π, Ω, argsR...)
     separableRingBeam = RingBeamSpecies(Π, Ω, argsR...)
+
+    @testset "Ensure besselj composes with complex indices and Duals"
+      @test DualNumbers.dualpart(besselj(1.0 + im, Dual(1.0, 1))) ≈
+        (besselj(0+im, 1.0) - besselj(2.0+im, 1.0)) / 2
+    end
 
     for (coupled, separable) ∈ (
                                 (coupledMaxwellian, separableMaxwellian),

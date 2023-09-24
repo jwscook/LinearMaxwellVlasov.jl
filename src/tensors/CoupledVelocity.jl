@@ -14,12 +14,6 @@ struct HarmonicSum{S,T,U,V,W} <: AbstractCoupledIntegrand
   n::Int
 end
 
-function denominator(h::HarmonicSum, vz)
-  output = h.ω - h.n * h.Ω - vz * h.kz
-  iszero(output) && (output += Inf)
-  return output
-end
-
 function numerator(harmonicsum::HarmonicSum, vz⊥)
   @assert length(vz⊥) == 2
   vz, v⊥ = vz⊥
@@ -64,10 +58,17 @@ function numerator(harmonicsum::HarmonicSum, vz⊥)
   return output
 end
 
-(h::HarmonicSum)(vz⊥) = numerator(h, vz⊥) / denominator(h, vz⊥[1])
-
 #=
 # deprecated
+
+function denominator(h::HarmonicSum, vz)
+  output = h.ω - h.n * h.Ω - vz * h.kz
+  iszero(output) && (output += Inf)
+  return output
+end
+
+(h::HarmonicSum)(vz⊥) = numerator(h, vz⊥) / denominator(h, vz⊥[1])
+
 function coupledvelocity(S::AbstractCoupledVelocitySpecies,
     C::Configuration, n::Int)
   #@warn "Deprecation: calling coupledvelocity(species, config) instead will
