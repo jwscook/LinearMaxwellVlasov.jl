@@ -9,13 +9,9 @@ function besselj(n::Integer, x::DualNumbers.Dual)
   r, d = realpart(x), dualpart(x)
   return Dual(besselj(n, r), d * (besselj(n - 1, r) - besselj(n + 1, r)) / 2)
 end
+
 import Base.^
 ^(x::DualNumbers.Dual, p::Complex) = exp((log(abs2(x))/2 + im * angle(x)) * p)
-#function Base.:^(x::DualNumbers.Dual, p::Complex)
-#  ρ² = abs2(x)
-#  θ = angle(p)
-#  return abs2(x)^(p/2) * exp(im * angle(x) * p)
-#end
 
 function besselj(a::Complex, z)
   return (z/2)^a / gamma(a + 1) * HypergeometricFunctions.pFq(
