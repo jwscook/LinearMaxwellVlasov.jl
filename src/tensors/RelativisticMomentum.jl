@@ -98,10 +98,10 @@ function relativisticmomentum(S::CoupledRelativisticSpecies,
     p⊥roots = momentumpoles(p⊥)
     function localresidue(pole)
       polefix = wavedirectionalityhandler(pole)
-      ppradius = (iszero(imag(pole)) ? abs(pole) : abs(imag(pole))) * sqrt(eps())
-      pp = principalpartadaptive(integrandpz, pole, ppradius, 64,
+      rpradius = (iszero(imag(pole)) ? abs(pole) : abs(imag(pole))) * sqrt(eps())
+      rp = residuepartadaptive(integrandpz, pole, rpradius, 64,
         C.options.summation_tol, Nmax=2048)
-      output = polefix.(residue(pp, polefix(pole)))
+      output = polefix.(residue(rp, polefix(pole)))
       output = Complex.((real(kz) >= 0 ? 1 : -1) * real(output), imag(output))
       return output
     end

@@ -31,7 +31,7 @@ struct FCoupledVelocityNumerical{T<:Function, U<:Number
   lower::Float64 # minimum speed for integration bounds
   upper::Float64 # maximum speed for integration bounds
   function FCoupledVelocityNumerical(F::T, normalisation::Tuple{U,U},
-      lower=0.0, upper=3default_integral_range * norm(normalisation);
+      lower=0.0, upper=4default_integral_range * norm(normalisation);
       autonormalise::Bool=false) where {T, U}
     output = new{T,U}(F, normalisation, lower, upper)
     if autonormalise

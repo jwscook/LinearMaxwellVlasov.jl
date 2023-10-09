@@ -116,12 +116,12 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies,
   function coupledresidue(v⊥)
     # this started life in relativistic version - can it be simplified?
     ∫dvz(x) = integrand((x, v⊥))
-    ppradius = (iszero(imag(pole)) ? abs(pole) : abs(imag(pole))) * sqrt(eps())
-    pp = principalpartadaptive(∫dvz, pole, ppradius, 64,
+    rpradius = (iszero(imag(pole)) ? abs(pole) : abs(imag(pole))) * sqrt(eps())
+    rp = residuepartadaptive(∫dvz, pole, rpradius, 64,
       C.options.summation_tol, Nmax=2048)
-    output = polefix.(residue(pp, polefix(pole)))
+    output = polefix.(residue(rp, polefix(pole)))
     output = sign(real(kz)) .* real(output) .+ im .* imag(output)
-    @assert !any(isnan, output)# "v⊥ = $v⊥, pp = $pp, pole = $pole"
+    @assert !any(isnan, output)# "v⊥ = $v⊥, rp = $rp, pole = $pole"
     return output
   end
 
@@ -221,7 +221,7 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
 
   function integral2D()
     return first(HCubature.hcubature(integrand,
-      (-S.F.upper, lower), (S.F.upper, S.F.upper), initdiv=128,
+      (-S.F.upper, lower), (S.F.upper, S.F.upper), initdiv=16,
       rtol=C.options.quadrature_tol.rel, atol=C.options.quadrature_tol.abs))
   end
 
@@ -235,9 +235,9 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
       principalintegrand(vz, v⊥) = - numerator(harmonicsum, (vz, v⊥)) / kz
       folded = foldnumeratoraboutpole(principalintegrand, real(float(pole)))
       output = first(HCubature.hcubature(folded,
-        (S.F.lower, S.F.lower), (S.F.upper, S.F.upper), initdiv=128,
+        (0.0, S.F.lower), (S.F.upper, S.F.upper), initdiv=16,
         rtol=C.options.quadrature_tol.rel, atol=C.options.quadrature_tol.abs))
-      @assert !any(isnan, output)# "v⊥ = $v⊥, output = $output"
+      @assert !any(isnan, output)
       return output
     end
     return converge(allprincipals, C.options.summation_tol)
@@ -249,11 +249,10 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
       pole = Pole(C.frequency, C.wavenumber, n, S.Ω)
       polefix = wavedirectionalityhandler(pole)
       residuesigma(polefix(pole)) == 0 && return 0.0
-      ppradius = (iszero(imag(pole)) ? abs(pole) : abs(imag(pole))) * sqrt(eps())
-      ppa = principalpartadaptive(vz->integrand((vz, v⊥)),
-        pole, ppradius, 64,
-        C.options.quadrature_tol, Nmax=2048)
-      output = polefix.(residue(ppa, polefix(pole)))
+      rpradius = (iszero(imag(pole)) ? abs(pole) : abs(imag(pole))) * sqrt(eps())
+      output = residuepartadaptive(vz->integrand((vz, v⊥)),
+        pole, rpradius, 64, C.options.quadrature_tol, Nmax=2^12)
+      output = polefix.(residue(output, polefix(pole)))
       output = sign(real(kz)) .* real(output) .+ im .* imag(output)
       @assert !any(isnan, output)# "v⊥ = $v⊥, pp = $pp, pole = $pole"
       return output
@@ -262,12 +261,13 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
   end
 
   function perpendicularintegral(∫dv⊥::T, nrm=1) where T
-    return first(QuadGK.quadgk(∫dv⊥, S.F.lower, S.F.upper, order=32,
+    return first(QuadGK.quadgk(∫dv⊥, S.F.lower, S.F.upper, order=7,
       atol=max(C.options.quadrature_tol.abs,
                C.options.quadrature_tol.rel * nrm / 2),
       rtol=C.options.quadrature_tol.rel))
   end
 
+  # if logic here is a confusing!
   result = if iszero(kz) || (!isreal(ω) || !isreal(kz))
     i2d = integral2D()
     if !iszero(kz) && !iszero(imag(ω))
@@ -277,6 +277,7 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
   else
     @assert isreal(ω) && isreal(kz)
     @assert !iszero(kz) # obviously
+    @warn "Coupled species calculations with zero imaginary pole coupled species are slow and inaccurate"
     pp = principal()
     pp .+ perpendicularintegral(coupledresidue, norm(pp))
   end

@@ -3,6 +3,7 @@ println("$(now()) $(@__FILE__)")
 
 using LinearMaxwellVlasov
 using Test, SpecialFunctions, QuadGK, HCubature, StaticArrays, Random
+using DualNumbers
 
 const LMV = LinearMaxwellVlasov
 
@@ -120,6 +121,11 @@ const LMV = LinearMaxwellVlasov
     @test expected ≈ result
     @test all(LMV.coordinates(g, [0.0, 0.0]) .== [0.0, 0.0])
     @test all(LMV.coordinates(g, [(sqrt(5)-1)/2, π/7]) .≈ [pth, π/7])
+  end
+
+  @testset "Ensure besselj composes with complex indices and Duals" begin
+    @test DualNumbers.dualpart(besselj(1.0 + im, Dual(1.0, 1))) ≈
+      (besselj(0+im, 1.0) - besselj(2.0+im, 1.0)) / 2
   end
 
 end
