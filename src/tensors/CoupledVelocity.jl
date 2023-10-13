@@ -251,7 +251,7 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
       residuesigma(polefix(pole)) == 0 && return 0.0
       rpradius = (iszero(imag(pole)) ? abs(pole) : abs(imag(pole))) * sqrt(eps())
       output = residuepartadaptive(vz->integrand((vz, v⊥)),
-        pole, rpradius, 64, C.options.quadrature_tol, Nmax=2^12)
+        pole, rpradius, 8, C.options.quadrature_tol, Nmax=2^12)
       output = polefix.(residue(output, polefix(pole)))
       output = sign(real(kz)) .* real(output) .+ im .* imag(output)
       @assert !any(isnan, output)# "v⊥ = $v⊥, pp = $pp, pole = $pole"
