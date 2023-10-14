@@ -46,10 +46,10 @@ end
         z = 10.0^rand(-5:5) * (rand() - 0.5) + im * 10.0^rand(-5:5) * (rand() - 0.5)
         pole = LMV.Pole(z, σ)
         f(x) = a / (x - pole)
-        PP1 = LMV.principalpart(f, pole)
-        PP2 = LMV.principalpartadaptive(f, pole, 8)
-        @test PP1 ≈ a atol=0 rtol=sqrt(eps())
-        @test PP2 ≈ a atol=0 rtol=sqrt(eps())
+        RP1 = LMV.residuepart(f, pole)
+        RP2 = LMV.residuepartadaptive(f, pole, 8)
+        @test RP1 ≈ a atol=0 rtol=sqrt(eps())
+        @test RP2 ≈ a atol=0 rtol=sqrt(eps())
       end
     end
   end

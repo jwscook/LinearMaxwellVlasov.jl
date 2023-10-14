@@ -1,5 +1,5 @@
 using DualNumbers, LinearAlgebra, MuladdMacro, SpecialFunctions, StaticArrays
-using CommonSubexpressions
+using CommonSubexpressions, HypergeometricFunctions
 
 derivative(f::T) where {T} = x -> DualNumbers.dualpart(f(Dual(x, 1)))
 derivative(f::T, x::Number) where {T} = DualNumbers.dualpart(f(Dual(x, 1)))
@@ -9,6 +9,15 @@ function besselj(n::Integer, x::DualNumbers.Dual)
   r, d = realpart(x), dualpart(x)
   return Dual(besselj(n, r), d * (besselj(n - 1, r) - besselj(n + 1, r)) / 2)
 end
+
+import Base.^
+^(x::DualNumbers.Dual, p::Complex) = exp((log(abs2(x))/2 + im * angle(x)) * p)
+
+function besselj(a::Complex, z)
+  return (z/2)^a / gamma(a + 1) * HypergeometricFunctions.pFq(
+    (@SArray []), (@SArray [a + 1]), -z^2 / 4)
+end
+
 
 import SpecialFunctions.besselix
 function besselix(n::Integer, x::DualNumbers.Dual)
@@ -66,7 +75,8 @@ and returns a new function that returns x when integrated between real(pole)
 and +Inf.
 """
 function foldnumeratoraboutpole(f::T, pole::Real) where {T<:Function}
-  folded(v) = (f(v + pole) - f(-v + pole)) / v
+  folded(v::Number) = (f(v + pole) - f(-v + pole)) / v
+  folded(v) = (f(v[1] + pole, v[2]) - f(-v[1] + pole, v[2])) / v[1]
   return folded
 end
 function foldnumeratoraboutpole(f::T, pole::Number) where {T<:Function}

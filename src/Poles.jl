@@ -50,7 +50,7 @@ end
 """
 Expressing f(x) = ∑ᵢ aᵢ (x - p)ⁱ find a₋₁
 """
-function principalpart(f::T, pole::Number, radius::Real=abs(pole) * sqrt(eps()),
+function residuepart(f::T, pole::Number, radius::Real=abs(pole) * sqrt(eps()),
     N::Int=64) where {T<:Function}
   kernel(θ) = f(radius * Complex(cos(θ), -sin(θ)) + pole)
   return discretefouriertransform(kernel, -1, N) / 2 * radius
@@ -60,7 +60,7 @@ end
 """
 Expressing f(x) = ∑ᵢ aᵢ (x - p)ⁱ find a₋₁
 """
-function principalpartadaptive(f::T, pole::Number,
+function residuepartadaptive(f::T, pole::Number,
     radius::Real=(isreal(pole) ? abs(pole) : imag(pole)) * sqrt(eps()),
     N::Int=64, tol::Tolerance=Tolerance(); Nmax=2^20) where {T<:Function}
   @assert ispow2(N) "N must be a power of 2 but it is $N"
