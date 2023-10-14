@@ -9,9 +9,13 @@ end
 
 include("tensors/CoupledVelocity.jl")
 
+"""
+Calculate the unitless susceptibility tensor contribution for a
+coupled velocity distribution function, without the need to sum over harmonics.
+"""
 function contribution(species::AbstractCoupledVelocitySpecies,
-    config::Configuration, cyclotronharmonic::Int)
-  return coupledvelocity(species, config, cyclotronharmonic)
+    config::Configuration, _::Cache=Cache())
+  return coupledvelocity(species, config)
 end
 
 function contribution(species::AbstractSeparableVelocitySpecies,
