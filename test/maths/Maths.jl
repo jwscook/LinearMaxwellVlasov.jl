@@ -3,7 +3,7 @@ println("$(now()) $(@__FILE__)")
 
 using LinearMaxwellVlasov
 using Test, SpecialFunctions, QuadGK, HCubature, StaticArrays, Random
-using DualNumbers
+using DualNumbers, ForwardDiff
 
 const LMV = LinearMaxwellVlasov
 
@@ -126,6 +126,21 @@ const LMV = LinearMaxwellVlasov
   @testset "Ensure besselj composes with complex indices and Duals" begin
     @test DualNumbers.dualpart(besselj(1.0 + im, Dual(1.0, 1))) ≈
       (besselj(0+im, 1.0) - besselj(2.0+im, 1.0)) / 2
+  end
+
+  @testset "Duals vs ForwardDiff" begin
+    for n in (3, 4, -3, -4), x in (-5.0, 5.0)
+      @test DualNumbers.dualpart(besselix(n, Dual(x, 1))) ≈
+        ForwardDiff.derivative(z->besselix(n, z), x)
+      @test DualNumbers.dualpart(besselj(n, Dual(x, 1))) ≈
+        ForwardDiff.derivative(z->besselj(n, z), x)
+    end
+    for n in (3, 4), x in (-5.0, 5.0)
+      @assert ForwardDiff.derivative(z->besseli(n, z), x) ≈
+        (besseli(n-1, x) + besseli(n+1, x)) / 2
+      @test DualNumbers.dualpart(n^Dual(x, 1)) ≈
+        ForwardDiff.derivative(z->n^z, x)
+    end
   end
 
 end

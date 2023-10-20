@@ -20,11 +20,12 @@ end
 
 
 import SpecialFunctions.besselix
-function besselix(n::Integer, x::DualNumbers.Dual)
+function besselix(n::Integer, x::DualNumbers.Dual{T}) where T
   r, d = realpart(x), dualpart(x)
   bix = besselix(n, r)
+  didr = (besseli(n - 1, r) + besseli(n + 1, r)) / 2
   return Dual(bix,
-    d * ((besselix(n - 1, r) + besselix(n + 1, r)) / 2 - abs(real(r)) * bix))
+    d * (didr * exp(-abs(real(r))) - sign(real(r)) * bix))
 end
 
 
