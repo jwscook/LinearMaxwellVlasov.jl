@@ -193,7 +193,7 @@ to the linear Maxwell-Vlasov system of equations for these species.
 function tensor(plasma::AbstractPlasma, config::Configuration,
     cache::Cache=Cache())
   ϵᵢⱼ = dielectric(plasma, config, cache)
-  return ϵᵢⱼ + curl_curl(config.wavenumber) * (c₀ / config.frequency)^2
+  return ϵᵢⱼ + kkT_Ik²(config.wavenumber) * (c₀ / config.frequency)^2
 end
 
 """

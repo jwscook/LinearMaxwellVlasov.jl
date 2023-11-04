@@ -49,7 +49,7 @@ const k0 = -1.234
 
   @testset "curl curl operator" begin
     K = Wavenumber(wavenumber=k0, propagationangle=π/4)
-    k_x_k = LMV.curl_curl(K)
+    k_x_k = LMV.kkT_Ik²(K)
     c = LMV.cartesian_vector(K)
 
     x = [0.0 -c[3] c[2]; c[3] 0.0 -c[1]; [-c[2] c[1] 0.0]]

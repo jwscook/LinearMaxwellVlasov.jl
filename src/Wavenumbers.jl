@@ -47,7 +47,7 @@ Base.angle(K::Wavenumber) = propagationangle(K)
 
 @inline cartesian_vector(K::Wavenumber) = @SArray [perp(K), 0.0, para(K)]
 
-@inline function curl_curl(K::Wavenumber)
+@inline function kkT_Ik²(K::Wavenumber)
   k = cartesian_vector(K)
   return k*k' - dot(k, k) * I
 end
