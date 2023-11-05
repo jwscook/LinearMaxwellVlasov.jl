@@ -189,11 +189,12 @@ end
 Calculate the tensor representing the linear Maxwell-Vlasov set of equations.
 The determinant is zero when the wavenumber and frequency represent a solution
 to the linear Maxwell-Vlasov system of equations for these species.
+Note that the curlcurl operator keeps track of the factor of -1 from im^2.
 """
 function tensor(plasma::AbstractPlasma, config::Configuration,
     cache::Cache=Cache())
   ϵᵢⱼ = dielectric(plasma, config, cache)
-  return ϵᵢⱼ + kkT_Ik²(config.wavenumber) * (c₀ / config.frequency)^2
+  return ϵᵢⱼ - curlcurl(config.wavenumber) * (c₀ / config.frequency)^2
 end
 
 """
