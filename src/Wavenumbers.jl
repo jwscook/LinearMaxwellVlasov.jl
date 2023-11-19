@@ -47,9 +47,24 @@ Base.angle(K::Wavenumber) = propagationangle(K)
 
 @inline cartesian_vector(K::Wavenumber) = @SArray [perp(K), 0.0, para(K)]
 
+"""
+julia> using Symbolics
+julia> @syms kx ky kz;
+julia> k = [kx, ky, kz];
+julia> curl = im * [0 -k[3] k[2]; k[3] 0 -k[1]; -k[2] k[1] 0];
+julia> curl * curl
+3×3 Matrix{Any}:
+ ky^2 + kz^2  -kx*ky       -kx*kz
+ -kx*ky       kx^2 + kz^2  -ky*kz
+ -kx*kz       -ky*kz       kx^2 + ky^2
+
+"""
 @inline function curlcurl(K::Wavenumber)
-  k = cartesian_vector(K)
-  return sum(x->x^2, k) * I - k*transpose(k) # defend against complex k
+  kx = perp(K) # ky = 0
+  kz = para(K)
+  return @SArray [ kz^2    0           -kx * kz;
+                   0       kx^2 + kz^2  0      ;
+                  -kx * kz 0            kx^2   ]
 end
 
 Base.abs(K::Wavenumber) = sqrt(abs2(K))
