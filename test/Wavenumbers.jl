@@ -48,12 +48,14 @@ const k0 = -1.234
   end
 
   @testset "curl curl operator" begin
-    K = Wavenumber(wavenumber=k0, propagationangle=π/4)
-    k_x_k = LMV.curl_curl(K)
-    c = LMV.cartesian_vector(K)
+    for k1 in (k0, k0 + im)
+      K = Wavenumber(wavenumber=k0, propagationangle=π/4)
+      ∇x∇x = LMV.curlcurl(K)
+      c = LMV.cartesian_vector(K)
 
-    x = [0.0 -c[3] c[2]; c[3] 0.0 -c[1]; [-c[2] c[1] 0.0]]
-    @test all(x*x .== k_x_k)
+      curl = im * [0.0 -c[3] c[2]; c[3] 0.0 -c[1]; [-c[2] c[1] 0.0]]
+      @test all(curl * curl .== ∇x∇x)
+    end
   end
 
   @testset "Costructor wavenumber propagationangle" begin
