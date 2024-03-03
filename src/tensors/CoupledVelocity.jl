@@ -172,39 +172,68 @@ function (newberger::Newberger)(vz, v⊥)
   @assert isfinite(π_sinπa)
   z = k⊥ * v⊥ / Ω
 
+  # it's faster to get the besselj derivatives with normal derivative
+  # equations rather than using DualNumbers
   Ja = besselj(a, z)
   J_a = besselj(-a, z)
-  Jad = (besselj(a - 1, z) - besselj(a + 1, z)) / 2
-  Jad = isfinite(Jad) ? Jad : besselj(a - 1, z) - besselj(a, z) * a / z
-  Jad = isfinite(Jad) ? Jad : besselj(a, z) * a / z - besselj(a + 1, z)
-  Jad = isfinite(Jad) ? Jad : DualNumbers.dualpart(besselj(a, Dual(z, 1)))
-  J_ad = (besselj(-a - 1, z) - besselj(-a + 1, z)) / 2
-  J_ad = isfinite(J_ad) ? J_ad : besselj(-a - 1, z) + besselj(-a, z) * a / z
-  J_ad = isfinite(J_ad) ? J_ad : -besselj(-a, z) * a / z - besselj(-a + 1, z)
-  J_ad = isfinite(J_ad) ? J_ad : DualNumbers.dualpart(besselj(-a, Dual(z, 1)))
-
-  isfinite(Ja + J_a + Jad + J_ad) || @show a, z, Ja, J_a, Jad, J_ad
-
   @assert isfinite(Ja)
   @assert isfinite(J_a)
+  # besselj for complex order is really expensive and these lop-sided
+  # derivatives call besselj twice not 4x, and are barely less accurate
+  Jad, J_ad = if real(a) > 0
+    Ja_1 = besselj(a - 1, z)
+    J_a1 = besselj(-a + 1, z)
+    (Ja_1 - Ja * a / z, -J_a * a / z - J_a1)
+  else
+    Ja1 = besselj(a + 1, z)
+    J_a_1 = besselj(-a - 1, z)
+    Ja * a / z - Ja1, J_a_1 + J_a * a / z
+  end
+
+#  Ja_1 = besselj(a - 1, z)
+#  Ja1 = besselj(a + 1, z)
+#  Jad = if isfinite(Ja_1) && isfinite(Ja1)
+#    (Ja_1 - Ja1) / 2
+#  elseif isfinite(Ja_1)
+#    Ja_1 - Ja * a / z
+#  elseif isfinite(Ja1)
+#    Ja * a / z - Ja1
+#  else
+#    DualNumbers.dualpart(besselj(a, Dual(z, 1)))
+#  end
+#  J_a_1 = besselj(-a - 1, z)
+#  J_a1 = besselj(-a + 1, z)
+#  J_ad = if isfinite(J_a_1) && isfinite(J_a1)
+#    (J_a_1 - J_a1) / 2
+#  elseif isfinite(J_a_1)
+#    J_a_1 + J_a * a / z
+#  elseif isfinite(J_a1)
+#    -J_a * a / z - J_a1
+#  else
+#    DualNumbers.dualpart(besselj(-a, Dual(z, 1)))
+#  end
+
   @assert isfinite(Jad)
   @assert isfinite(J_ad)
-  Q_a = π_sinπa * J_a * Ja # Eq 33
-  Qd_a = π_sinπa * (J_ad * Ja + J_a * Jad) # Eq 33
-  Xzz = 2π * Ω * vz * (v⊥ * dfdvz - vz * dfdv⊥) / Ω # Part of Eq 34 (x'ed by ω/Ω)
-  U = (kz * v⊥ * dfdvz + (ω - kz * vz) * dfdv⊥) / Ω # Eq 4 (multiplied by ω/Ω)
-  T11 = a / (k⊥ / Ω)^2 * (a * Q_a - 1)
-  T12 = im / 2z * a * Qd_a * v⊥^2
-  T13 = (a * Q_a - 1) / (k⊥ / Ω) * vz
-  T22 = (π_sinπa * J_ad * Jad * v⊥^2 + a / (k⊥ / Ω)^2)
-  T23 = - vz * im / 2 * Qd_a * v⊥
-  T33 = Q_a * vz^2
-  T21 = -T12
-  T31 = T13
-  T32 = -T23
-  T = @MArray [T11 T12 T13; T21 T22 T23; T31 T32 T33]
-  @assert all(isfinite, T) "$T"
-  Xij = (2π * U) .* T # Eq 34, part
+
+  @cse begin
+    Q_a = π_sinπa * J_a * Ja # Eq 33
+    Qd_a = π_sinπa * (J_ad * Ja + J_a * Jad) # Eq 33
+    Xzz = 2π * Ω * vz * (v⊥ * dfdvz - vz * dfdv⊥) / Ω # Part of Eq 34 (x'ed by ω/Ω)
+    U = (kz * v⊥ * dfdvz + (ω - kz * vz) * dfdv⊥) / Ω # Eq 4 (multiplied by ω/Ω)
+    T11 = a / (k⊥ / Ω)^2 * (a * Q_a - 1)
+    T12 = im / 2z * a * Qd_a * v⊥^2
+    T13 = (a * Q_a - 1) / (k⊥ / Ω) * vz
+    T22 = (π_sinπa * J_ad * Jad * v⊥^2 + a / (k⊥ / Ω)^2)
+    T23 = - vz * im / 2 * Qd_a * v⊥
+    T33 = Q_a * vz^2
+    T21 = -T12
+    T31 = T13
+    T32 = -T23
+  end
+  Tij = @MArray [T11 T12 T13; T21 T22 T23; T31 T32 T33]
+  @assert all(isfinite, Tij) Tij
+  Xij = (2π * U) .* Tij # Eq 34, part
   Xij[3, 3] += Xzz
   return Xij # Eq 34 (U is multiplied by ω)
 end
