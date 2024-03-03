@@ -13,9 +13,10 @@ end
 import Base.^
 ^(x::DualNumbers.Dual, p::Complex) = exp((log(abs2(x))/2 + im * angle(x)) * p)
 
-function besselj(a::Complex, z)
-  return (z/2)^a / gamma(a + 1) * HypergeometricFunctions.pFq(
-    (@SArray []), (@SArray [a + 1]), -z^2 / 4)
+function besselj(a::T, z) where {T<:Complex}
+  #exp(a * log(z/2)) is faster than (z/2)^a
+  return exp(a * log(z / 2) - loggamma(a + 1)) * HypergeometricFunctions.pFq(
+    (@SArray T[]), (@SArray [a + 1]), -z^2 / 4)
 end
 
 
