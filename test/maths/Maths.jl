@@ -143,4 +143,13 @@ const LMV = LinearMaxwellVlasov
     end
   end
 
+  @testset "Dual ^ Complex" begin
+    a, b = rand(Float64), rand(ComplexF64)
+    @test DualNumbers.realpart(DualNumbers.Dual(a, 1)^b) ≈ a^b
+    @test DualNumbers.dualpart(DualNumbers.Dual(a, 1)^b) ≈ b * a^(b - 1)
+    a, b = rand(ComplexF64), rand(ComplexF64)
+    @test DualNumbers.realpart(DualNumbers.Dual(a, 1)^b) ≈ a^b
+    @test DualNumbers.dualpart(DualNumbers.Dual(a, 1)^b) ≈ b * a^(b - 1)
+  end
+
 end
