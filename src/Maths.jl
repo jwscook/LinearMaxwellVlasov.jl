@@ -4,15 +4,14 @@ using CommonSubexpressions, HypergeometricFunctions
 derivative(f::T) where {T} = x -> DualNumbers.dualpart(f(Dual(x, 1)))
 derivative(f::T, x::Number) where {T} = DualNumbers.dualpart(f(Dual(x, 1)))
 
+import Base.^
+^(x::DualNumbers.Dual, p::Complex) = exp((log(abs2(x))/2 + im * angle(x)) * p)
+
 import SpecialFunctions.besselj
 function besselj(n::Integer, x::DualNumbers.Dual)
   r, d = realpart(x), dualpart(x)
   return Dual(besselj(n, r), d * (besselj(n - 1, r) - besselj(n + 1, r)) / 2)
 end
-
-import Base.^
-^(x::DualNumbers.Dual, p::Complex) = exp((log(abs2(x))/2 + im * angle(x)) * p)
-
 function besselj(a::T, z) where {T<:Complex}
   #exp(a * log(z/2)) is faster than (z/2)^a
   return exp(a * log(z / 2) - loggamma(a + 1)) * HypergeometricFunctions.pFq(
