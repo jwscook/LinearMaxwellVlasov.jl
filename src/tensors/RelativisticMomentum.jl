@@ -39,15 +39,7 @@ function (nr::NewbergerRelativistic)(pz⊥)
     T = promote_type((eltype.((γξ⊥, a, dfdpz, dfdp⊥)))...)
     return @MArray zeros(T, 3, 3)
   end
-  #T = promote_type((eltype.((γξ⊥, a, dfdpz, dfdp⊥)))...)
-  #isinteger(a) && return @MArray zeros(T, 3, 3)
   @assert !isinteger(a) (a, πa_sinπa, pz)
-
-#  dualJa = besselj(a, Dual(γξ⊥, 1))
-#  Ja, Jad = DualNumbers.realpart(dualJa), DualNumbers.dualpart(dualJa)
-#  dualJ_a = besselj(-a, Dual(γξ⊥, 1))
-#  J_a, J_ad = DualNumbers.realpart(dualJ_a), DualNumbers.dualpart(dualJ_a)
-#  @show J_a, J_ad
 
   Ja = besselj(a, γξ⊥)
   J_a = besselj(-a, γξ⊥)
@@ -174,12 +166,7 @@ function momentumpoles(ars::AbstractRelativisticStruct, p⊥, n)
   a = 1 - (kz * c₀ / ω)^2
   b = - 2 * n * Ω * kz * m * c₀^2 / ω^2
   c = p⊥^2 + m^2 * c₀^2 * (1 - (n * Ω / ω)^2)
-#  a0 = 1 - (kz * c₀ / ω)^2 # negative when phase speed is sub luminal
-#  b0 = - 2 * n * Ω * kz * m * c₀^2 / ω^2 # sign is - n Ω kz
-#  c0 = p⊥^2 + m^2 * c₀^2 * (1 - (n * Ω / ω)^2)
-#  a = a0 / a0 / 2
-#  b = b0 / a0 / 2
-#  c = c0 / a0 / 2
+
   pzroot1 = (-b + sqrt(b^2 - 4 * a * c)) / (2a)
   pzroot2 = (-b - sqrt(b^2 - 4 * a * c)) / (2a)
 
@@ -227,7 +214,6 @@ function relativisticmomentum(S::CoupledRelativisticSpecies, C::Configuration)
         return rh((x, p⊥)) .* pchar
       end
       objective = transformaboutroots(integrandpz, real(pole(pzroots[1])/pchar))
-      #principal = first(QuadGK.quadgk(objective, -bound, bound, rtol=innertol))
 
       polefix = wavedirectionalityhandler(pzroots[1])
       principal = polefix.(first(QuadGK.quadgk(objective, -bound, bound)))
@@ -269,7 +255,7 @@ function relativisticmomentum(S::CoupledRelativisticSpecies, C::Configuration)
                outertol * nrm / 2),
       rtol=outertol))
   end
-#  @assert !polesarereal
+
   result = polesarereal ? integralsnested1D(principal) : integral2D()
   result += integralsnested1D(relativisticresidue, norm(result))
   return result
