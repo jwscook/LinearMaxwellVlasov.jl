@@ -1,8 +1,6 @@
 using CommonSubexpressions, DualNumbers, HCubature, LinearAlgebra, QuadGK
 using StaticArrays, SpecialFunctions
 
-abstract type AbstractCoupledIntegrand end
-
 (igrand::AbstractCoupledIntegrand)(vzv⊥) = igrand(vzv⊥[1], vzv⊥[2])
 
 struct HarmonicSum{S,T,U,V,W} <: AbstractCoupledIntegrand
@@ -118,7 +116,7 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies,
     ∫dvz(x) = integrand((x, v⊥))
     rpradius = (iszero(imag(pole)) ? abs(pole) : abs(imag(pole))) * sqrt(eps())
     rp = residuepartadaptive(∫dvz, pole, rpradius, 64,
-      C.options.summation_tol, Nmax=2048)
+      C.options.summation_tol)
     output = polefix.(residue(rp, polefix(pole)))
     output = sign(real(kz)) .* real(output) .+ im .* imag(output)
     @assert !any(isnan, output)# "v⊥ = $v⊥, rp = $rp, pole = $pole"
@@ -148,19 +146,19 @@ end
 =#
 
 
-struct Newberger{S,T,U,V,W} <: AbstractCoupledIntegrand
+struct NewbergerClassical{S,T,U,V,W} <: AbstractCoupledIntegrand
   species::S
   ω::T
   Ω::U
   kz::V
   k⊥::W
 end
-function (newberger::Newberger)(vz, v⊥)
-  S = newberger.species
-  ω = newberger.ω
-  Ω = newberger.Ω
-  kz = newberger.kz
-  k⊥ = newberger.k⊥
+function (nc::NewbergerClassical)(vz, v⊥)
+  S = nc.species
+  ω = nc.ω
+  Ω = nc.Ω
+  kz = nc.kz
+  k⊥ = nc.k⊥
   dfdvz = DualNumbers.dualpart(S(Dual(vz, 1), v⊥))
   dfdv⊥ = DualNumbers.dualpart(S(vz, Dual(v⊥, 1)))
 
@@ -189,29 +187,6 @@ function (newberger::Newberger)(vz, v⊥)
     J_a_1 = besselj(-a - 1, z)
     Ja * a / z - Ja1, J_a_1 + J_a * a / z
   end
-
-#  Ja_1 = besselj(a - 1, z)
-#  Ja1 = besselj(a + 1, z)
-#  Jad = if isfinite(Ja_1) && isfinite(Ja1)
-#    (Ja_1 - Ja1) / 2
-#  elseif isfinite(Ja_1)
-#    Ja_1 - Ja * a / z
-#  elseif isfinite(Ja1)
-#    Ja * a / z - Ja1
-#  else
-#    DualNumbers.dualpart(besselj(a, Dual(z, 1)))
-#  end
-#  J_a_1 = besselj(-a - 1, z)
-#  J_a1 = besselj(-a + 1, z)
-#  J_ad = if isfinite(J_a_1) && isfinite(J_a1)
-#    (J_a_1 - J_a1) / 2
-#  elseif isfinite(J_a_1)
-#    J_a_1 + J_a * a / z
-#  elseif isfinite(J_a1)
-#    -J_a * a / z - J_a1
-#  else
-#    DualNumbers.dualpart(besselj(-a, Dual(z, 1)))
-#  end
 
   @assert isfinite(Jad)
   @assert isfinite(J_ad)
@@ -244,7 +219,7 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
   kz, k⊥ = para(C.wavenumber), perp(C.wavenumber)
   @assert !iszero(k⊥) "Perpendicular wavenumber must not be zero"
 
-  integrand = Newberger(S, ω, Ω, kz, k⊥)
+  integrand = NewbergerClassical(S, ω, Ω, kz, k⊥)
 
   lower = max(S.F.lower, eps())
 
@@ -261,7 +236,7 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
       harmonicsum = HarmonicSum(S, ω, Ω, kz, k⊥, n)
       pole = Pole(C.frequency, C.wavenumber, n, S.Ω)
       @assert iszero(imag(pole))
-      principalintegrand(vz, v⊥) = - numerator(harmonicsum, (vz, v⊥)) / kz
+      principalintegrand(vz, v⊥) = -numerator(harmonicsum, (vz, v⊥)) / kz
       folded = foldnumeratoraboutpole(principalintegrand, real(float(pole)))
       output = first(HCubature.hcubature(folded,
         (0.0, S.F.lower), (S.F.upper, S.F.upper), initdiv=16,
@@ -272,15 +247,15 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
     return converge(allprincipals, C.options.summation_tol)
   end
 
-  function coupledresidue(v⊥)
+  function coupledresidue(v⊥, ::Type{T0})::T0 where T0
     # this started life in relativistic version - can it be simplified?
     function allresidues(n)
       pole = Pole(C.frequency, C.wavenumber, n, S.Ω)
       polefix = wavedirectionalityhandler(pole)
-      residuesigma(polefix(pole)) == 0 && return 0.0
+      residuesigma(polefix(pole)) == 0 && return zero(T0)
       rpradius = (iszero(imag(pole)) ? abs(pole) : abs(imag(pole))) * sqrt(eps())
       output = residuepartadaptive(vz->integrand((vz, v⊥)),
-        pole, rpradius, 8, C.options.quadrature_tol, Nmax=2^12)
+        pole, rpradius, 8, C.options.quadrature_tol)
       output = polefix.(residue(output, polefix(pole)))
       output = sign(real(kz)) .* real(output) .+ im .* imag(output)
       @assert !any(isnan, output)# "v⊥ = $v⊥, pp = $pp, pole = $pole"
@@ -300,7 +275,7 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
   result = if iszero(kz) || (!isreal(ω) || !isreal(kz))
     i2d = integral2D()
     if !iszero(kz) && !iszero(imag(ω))
-      i2d .+= perpendicularintegral(coupledresidue, norm(i2d))
+      i2d .+= perpendicularintegral(v⊥->coupledresidue(v⊥, typeof(i2d)), norm(i2d))
     end
     i2d
   else
@@ -308,7 +283,7 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
     @assert !iszero(kz) # obviously
     @warn "Coupled species calculations with zero imaginary pole coupled species are slow and inaccurate"
     pp = principal()
-    pp .+ perpendicularintegral(coupledresidue, norm(pp))
+    pp .+ perpendicularintegral(v⊥->coupledresidue(v⊥, typeof(pp)), norm(pp))
   end
   return result
 end

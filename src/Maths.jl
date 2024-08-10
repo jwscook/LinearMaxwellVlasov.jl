@@ -12,10 +12,24 @@ function besselj(n::Integer, x::DualNumbers.Dual)
   r, d = realpart(x), dualpart(x)
   return Dual(besselj(n, r), d * (besselj(n - 1, r) - besselj(n + 1, r)) / 2)
 end
+
+function isapproxinteger(z::Complex, tol=eps())
+  rz, iz = reim(z)
+  a = round(Int, rz)
+  isapprox(a, rz, rtol=tol, atol=tol) || return false
+  isapprox(0, iz, rtol=tol, atol=tol) || return false
+  return true
+end
 function besselj(a::T, z) where {T<:Complex}
-  #exp(a * log(z/2)) is faster than (z/2)^a
-  return exp(a * log(z / 2) - loggamma(a + 1)) * HypergeometricFunctions.pFq(
-    (@SArray T[]), (@SArray [a + 1]), -z^2 / 4)
+  #exp(a * log(z/2)) is faster and more accurate than (z/2)^a
+  if !(T <: Dual) && (isinteger(a) || isapproxinteger(a, eps()))
+    return promote_type(T, typeof(z))(besselj(round(Int, real(a)), z))
+  else
+    factor(z::Dual, a) = (z / 2)^a / gamma(a + 1) # Can't do Complex(Dual)
+    factor(z, a) = exp(a * log(Complex(z) / 2) - loggamma(a + 1))
+    return factor(z, a) * HypergeometricFunctions.pFq(
+      (@SArray T[]), (@SArray [a + 1]), -z^2 / 4)
+  end
 end
 
 
@@ -75,12 +89,12 @@ Takes a function that when integrated between -Inf and +Inf returns value x,
 and returns a new function that returns x when integrated between real(pole)
 and +Inf.
 """
-function foldnumeratoraboutpole(f::T, pole::Real) where {T<:Function}
+function foldnumeratoraboutpole(f::T, pole::Real) where {T}
   folded(v::Number) = (f(v + pole) - f(-v + pole)) / v
   folded(v) = (f(v[1] + pole, v[2]) - f(-v[1] + pole, v[2])) / v[1]
   return folded
 end
-function foldnumeratoraboutpole(f::T, pole::Number) where {T<:Function}
+function foldnumeratoraboutpole(f::T, pole::Number) where {T}
   r, i = reim(pole)
   function folded(v)
     a, b, c = f(r + v), f(r - v), 1 / (v - Complex(0, i))
@@ -100,7 +114,7 @@ end
 """
 Transform a function from domain [-∞, ∞]ⁿ down to [-1, 1]ⁿ
 """
-struct TransformFromInfinity{T<:Function, U}
+struct TransformFromInfinity{T, U}
   f::T
   scale::U
 end
@@ -126,7 +140,7 @@ julia> hcubature(UnitSemicircleIntegrandTransform(f, 2.0), [0, -π/2], [1, π/2]
 (0.7710130940919337, 1.1464196819507393e-8)
 ```
 """
-struct UnitSemicircleIntegrandTransform{T<:Function, U<:Number}
+struct UnitSemicircleIntegrandTransform{T, U<:Number}
   f::T
   scale::U
 end
@@ -175,7 +189,7 @@ function polarfromparallelperp(vz⊥)
   return (norm(vz⊥), atan(vz⊥[1], vz⊥[2]))
 end
 
-function transformtopolar(f::T) where {T<:Function}
+function transformtopolar(f::T) where {T}
   fpolar(rθ::AbstractVector{T}) where {T<:Number} = f(parallelperpfrompolar(rθ))
   return fpolar
 end

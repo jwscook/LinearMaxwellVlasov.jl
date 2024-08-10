@@ -23,12 +23,11 @@ const LMV = LinearMaxwellVlasov
 
   k = 2π/λD / 2
   ω = abs(vthe * k) # + Ωe
-  #for σ ∈ (-1, 1), ϕ ∈ (-1, 1)
-  for σ ∈ (1,), ϕ ∈ (1,)
+  for σ ∈ (0, -1, 1), ϕ ∈ (-1, 1)
     F = ComplexF64(ω, σ * ω / 100)
     K = Wavenumber(k=ϕ * k, θ=π/4)
-    config = Configuration(F, K)
-    config.options = Options(rtols=1.0e-4)
+    options = Options(summation_rtol=1e-3, quadrature_rtol=1e-6)
+    config = Configuration(F, K, options)
     outputC = LMV.contribution(classical, config)
     outputR = LMV.contribution(relativistic, config)
 
