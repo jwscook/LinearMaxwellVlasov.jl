@@ -63,4 +63,5 @@ end
   @test !isfinite(LMV.Pole(0 + Inf*im, 1))
   @test !isfinite(LMV.Pole(Inf + Inf*im, 1))
 end
+
 end

@@ -1,10 +1,12 @@
 using CommonSubexpressions, LinearAlgebra, MuladdMacro, StaticArrays
 
+abstract type AbstractCoupledIntegrand end
+
 include("tensors/RelativisticMomentum.jl")
 
 function contribution(species::CoupledRelativisticSpecies,
-    config::Configuration, cyclotronharmonic::Int)
-  return relativisticmomentum(species, config, cyclotronharmonic)
+    config::Configuration, _::Cache=Cache())
+  return relativisticmomentum(species, config)
 end
 
 include("tensors/CoupledVelocity.jl")
