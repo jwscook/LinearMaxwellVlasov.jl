@@ -1,10 +1,9 @@
-using DualNumbers, LoopVectorization
-
 
 function fastisapprox(n, x, y, atol, rtol, nans)
   (n <= max(abs2(atol), abs2(rtol) * max(x, y))) && return true
   return nans ? (isnan(x) && isnan(y)) : false
 end
+
 function fastisapprox(A::Number, B::Number; atol, rtol, nans)
   n = abs2(A - B)
   x, y = abs2(A), abs2(B)
@@ -12,24 +11,10 @@ function fastisapprox(A::Number, B::Number; atol, rtol, nans)
 end
 
 function fastisapprox(A::AbstractArray{T, N}, B::AbstractArray{T, N};
-    atol, rtol, nans) where {T<:Union{Real,Dual{<:Real}}, N}
-  n = x = y = zero(T)
-  @turbo for i in eachindex(A, B)
+    atol, rtol, nans) where {T, N}
+  n = x = y = zero(real(T))
+  @inbounds @simd for i in eachindex(A, B)
     a, b = A[i], B[i]
-    n += abs2(a - b)
-    x += abs2(a)
-    y += abs2(b)
-  end
-  return fastisapprox(n, x, y, atol, rtol, nans)
-end
-
-function fastisapprox(A::AbstractArray{T, N}, B::AbstractArray{T, N};
-    atol, rtol, nans) where {T<:Union{Complex, Dual{<:Complex}}, N}
-  U = promote_type(real(eltype(A)), real(eltype(B)))
-  n = x = y = zero(U)
-  AA, BB = reinterpret(U, A), reinterpret(U, B)
-  @turbo for i in eachindex(AA, BB)
-    a, b = AA[i], BB[i]
     n += abs2(a - b)
     x += abs2(a)
     y += abs2(b)
