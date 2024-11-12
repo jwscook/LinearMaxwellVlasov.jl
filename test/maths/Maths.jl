@@ -143,4 +143,24 @@ const LMV = LinearMaxwellVlasov
     end
   end
 
+  @testset "Dual ^ Complex" begin
+    a, b = rand(Float64), rand(ComplexF64)
+    @test DualNumbers.realpart(DualNumbers.Dual(a, 1)^b) ≈ a^b
+    @test DualNumbers.dualpart(DualNumbers.Dual(a, 1)^b) ≈ b * a^(b - 1)
+    a, b = rand(ComplexF64), rand(ComplexF64)
+    @test DualNumbers.realpart(DualNumbers.Dual(a, 1)^b) ≈ a^b
+    @test DualNumbers.dualpart(DualNumbers.Dual(a, 1)^b) ≈ b * a^(b - 1)
+  end
+
+  @testset "isapproxinteger" begin
+    @test LMV.isapproxinteger(1.0 + 0im, 0.0)
+    @test LMV.isapproxinteger(1.0 + 0im, eps())
+    @test LMV.isapproxinteger(1.0 + im * eps(), eps())
+    @test LMV.isapproxinteger(0.0 + im * eps(), eps())
+    @test !LMV.isapproxinteger(1.0 + 1im, eps())
+    @test !LMV.isapproxinteger(0.0 + im * 2eps(), eps())
+    @test !LMV.isapproxinteger(1.0 + im * 2eps(), eps())
+    @test !LMV.isapproxinteger(2*(1 + 2eps()) + 0im, eps())
+    @test LMV.isapproxinteger(2*(1 + eps()) + 0im, eps())
+  end
 end

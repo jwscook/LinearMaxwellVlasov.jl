@@ -1,75 +1,197 @@
-using CommonSubexpressions, DualNumbers, HCubature, QuadGK, SpecialFunctions
-using StaticArrays
+abstract type AbstractRelativisticStruct end
+const ARS = AbstractRelativisticStruct 
 
-function relativisticmomentum(S::CoupledRelativisticSpecies,
-    C::Configuration, n::Int)
-  ω, nΩ = C.frequency, S.Ω * n
+struct NewbergerRelativistic{S,T,U,V} <: ARS
+  species::S
+  ω::T
+  kz::U
+  k⊥::V
+end
+
+fγ(ars::ARS, pz⊥) = sqrt(1 + sum(x->x^2, pz⊥) / (ars.species.m * c₀)^2)
+function fa(ars::ARS, pz⊥)
+  return (fγ(ars, pz⊥) * ars.ω - ars.kz * pz⊥[1] / ars.species.m) / ars.species.Ω
+end
+
+function (nr::NewbergerRelativistic)(pz⊥)
+  pz, p⊥ = pz⊥
+  ω = nr.ω
+  Ω = nr.species.Ω
+  kz = nr.kz
+  k⊥ = nr.k⊥
+  @assert !iszero(k⊥)
+  m = nr.species.m
+  nz = kz * c₀ / ω
+  n⊥ = k⊥ * c₀ / ω
+
+  γ = fγ(nr, pz⊥)
+  a = fa(nr, pz⊥)
+  πa = π * a
+  sinπa = sin(πa)
+  π_sinπa = π / sinπa
+  πa_sinπa = π_sinπa * a
+  γξ⊥ = p⊥ * k⊥ / m / Ω
+
+  dfdpz = DualNumbers.dualpart(nr.species(Dual(pz, 1), p⊥))
+  dfdp⊥ = DualNumbers.dualpart(nr.species(pz, Dual(p⊥, 1)))
+
+  if iszero(dfdpz) && iszero(dfdp⊥)
+    T = promote_type((eltype.((γξ⊥, a, dfdpz, dfdp⊥)))...)
+    return @MArray zeros(T, 3, 3)
+  end
+  @assert !isinteger(a) (a, πa_sinπa, pz)
+
+  Ja = besselj(a, γξ⊥)
+  J_a = besselj(-a, γξ⊥)
+  @assert isfinite(Ja) Ja
+  @assert isfinite(J_a) J_a
+  Jad, J_ad = if real(a) >= 0
+    Ja_1 = besselj(a - 1, γξ⊥)
+    J_a1 = besselj(-a + 1, γξ⊥)
+    (Ja_1 - Ja * a / γξ⊥, -J_a * a / γξ⊥ - J_a1)
+  else
+    Ja1 = besselj(a + 1, γξ⊥)
+    J_a_1 = besselj(-a - 1, γξ⊥)
+    Ja * a / γξ⊥ - Ja1, J_a_1 + J_a * a / γξ⊥
+  end
+
+  θF = p⊥ * dfdpz - pz * dfdp⊥
+
+  Qxx = p⊥ / γξ⊥^2 * (dfdp⊥ + kz / (m * γ * ω) * θF) * (πa_sinπa * Ja * J_a - 1) * a
+  Qxy = im * p⊥ / γξ⊥ * (dfdp⊥ + kz / (m * γ * ω) * θF) * (πa_sinπa * Ja * J_ad + a / γξ⊥)
+  Qxz = 1 / γξ⊥ * (p⊥ * dfdpz) * (πa_sinπa * Ja * J_a)
+  Qxz -= 1 / γξ⊥ * (Ω / (γ * ω) * θF) * (πa_sinπa * Ja * J_ad - 1) * a
+  Qyx = -Qxy
+  Qyy = p⊥ * (dfdp⊥ + kz / (m * γ * ω) * θF) * (π_sinπa * Jad * J_ad + a / γξ⊥^2)
+  Qyz = -im * p⊥ * dfdpz * (π_sinπa * Ja * J_ad)
+  Qyz += im * (Ω / (γ * ω) * θF) * (πa_sinπa * Ja * J_ad + a / γξ⊥)
+  Qzx = pz / γξ⊥ * (dfdp⊥ + kz / (m * γ * ω) * θF) * (πa_sinπa * Ja * J_a)
+  Qzy = im * pz * (dfdp⊥ + kz / (m * γ * ω) * θF) * (π_sinπa * Ja * J_ad)
+  Qzz = pz * dfdpz * (π_sinπa * Ja * J_a)
+  Qzz -= pz / p⊥ * Ω / (γ * ω) * θF * (πa_sinπa * Ja * J_a)
+
+  Qij = @MArray [Qxx Qxy Qxz; Qyx Qyy Qyz; Qzx Qzy Qzz]
+  if !all(isfinite, Qij)
+    @show pz, p⊥, a, γξ⊥, dfdpz, dfdp⊥, γ
+    @show Ja, J_a, Jad, J_ad
+    @show Ja_1 = besselj(a - 1, γξ⊥)
+    @show J_a1 = besselj(-a + 1, γξ⊥)
+    @show Ja1 = besselj(a + 1, γξ⊥)
+    @show J_a_1 = besselj(-a - 1, γξ⊥)
+  end
+  @assert all(isfinite, Qij) (Qij, a, Ja, J_a, Jad, J_ad, dfdpz, dfdp⊥, π_sinπa, πa_sinπa)
+  common = 2π * p⊥ * ω / Ω
+  Qij .*= common
+  return Qij
+end
+
+"""
+Relativestic dielectric tensor as a function of cyclotron harmonic
+This is only used for the principal part.
+"""
+struct RelativisticHarmonic{S, T, U, V} <: ARS 
+  species::S
+  ω::T
+  kz::U
+  k⊥::V
+  n::Int
+end
+
+function denominator(rh::RelativisticHarmonic, pz⊥)
+  pz, p⊥ = pz⊥
+  γ = fγ(rh, pz⊥)
+  output = γ * rh.ω - rh.kz * pz / rh.species.m - rh.n * rh.species.Ω
+  iszero(output) && (output += convert(eltype(output), Inf))
+  return output
+end
+
+function numerator(rh::RelativisticHarmonic, pz⊥)
+  pz, p⊥ = pz⊥
+
+  kz = rh.kz
+  k⊥ = rh.k⊥
+  ω = rh.ω
+  m = rh.species.m
+  Ω = rh.species.Ω
+  n = rh.n
+  nΩ = n * Ω
+
+  # Following Brambilla's book
+  γξ⊥ = p⊥ * k⊥ / m / Ω
+
+  Jn₋ = besselj(n - 1, γξ⊥)
+  Jn₊ = iszero(n) ? -Jn₋ : besselj(n + 1, γξ⊥)
+  Jn = iszero(n) ? besselj(n, γξ⊥) : γξ⊥ / 2n * (Jn₋ + Jn₊)
+  Jnd = (Jn₋ - Jn₊) / 2
+
+  nJn_γξ⊥ = iszero(γξ⊥) ? typeof(γξ⊥)(isone(abs(n)) / 2) : n * Jn / γξ⊥
+
+  dfdpz = DualNumbers.dualpart(rh.species(Dual(pz, 1), p⊥))
+  dfdp⊥ = DualNumbers.dualpart(rh.species(pz, Dual(p⊥, 1)))
+
+  γ = fγ(rh, pz⊥)
+
+  @cse @muladd begin
+    θF = p⊥ * dfdpz - pz * dfdp⊥
+
+    O⊥p⊥ = 2π * p⊥ * (ω * dfdp⊥ + kz / m / γ * θF)
+    Ob1p⊥ = 2π * p⊥ * (p⊥ * ω * dfdpz - nΩ / γ * θF)
+    Ob2p⊥ = 2π * (p⊥ * pz * ω * dfdpz - nΩ / γ * pz * θF)
+
+    m11 = nJn_γξ⊥^2 * p⊥ * O⊥p⊥
+    m12 = im * nJn_γξ⊥ * Jnd * p⊥ * O⊥p⊥
+    m13 = nJn_γξ⊥ * Jn * Ob1p⊥
+    m21 = -m12 # Onsager
+    m22 = Jnd^2 * p⊥ * O⊥p⊥
+    m23 = -im * Jn * Jnd * Ob1p⊥
+    # m31 = nJn_γξ⊥ * Jn * pz * O⊥p⊥
+    m31 = m13 # Onsager
+    # m32 = im * Jn * Jnd * pz * O⊥p⊥
+    m32 = -m23 # Onsager
+    m33 = Jn^2 * Ob2p⊥
+  end
+
+  return @SArray [m11 m12 m13; m21 m22 m23; m31 m32 m33]
+end
+(rh::RelativisticHarmonic)(pz⊥) = numerator(rh, pz⊥) ./ denominator(rh, pz⊥)
+
+function momentumpoles(rh::RelativisticHarmonic, p⊥)
+  return momentumpoles(rh, p⊥, rh.n)
+end
+function momentumpoles(ars::AbstractRelativisticStruct, p⊥, n)
+  kz = ars.kz
+  ω = ars.ω
+  Ω = ars.species.Ω
+  m = ars.species.m
+  a = 1 - (kz * c₀ / ω)^2
+  b = - 2 * n * Ω * kz * m * c₀^2 / ω^2
+  c = p⊥^2 + m^2 * c₀^2 * (1 - (n * Ω / ω)^2)
+
+  pzroot1 = (-b + sqrt(b^2 - 4 * a * c)) / (2a)
+  pzroot2 = (-b - sqrt(b^2 - 4 * a * c)) / (2a)
+
+  pz1 = Pole(pzroot1, kz)
+  output = Vector{typeof(pz1)}()
+  if isapproxinteger(fa(ars, (pzroot1, p⊥)), 10000eps())
+    push!(output, Pole(pzroot1, kz))
+  end
+  if isapproxinteger(fa(ars, (pzroot2, p⊥)), 10000eps())
+    push!(output, Pole(pzroot2, kz))
+  end
+  return output
+end
+
+
+function relativisticmomentum(S::CoupledRelativisticSpecies, C::Configuration)
+  ω, Ω, m = C.frequency, S.Ω, S.m
+  @assert !iszero(Ω)
   kz, k⊥ = para(C.wavenumber), perp(C.wavenumber)
-  mc² = S.m * c₀^2
   @assert !iszero(k⊥) "Perpendicular wavenumber must not be zero"
   polesarereal = all(iszero, imag.((ω, kz, k⊥)))
 
-  fγ(pz, p⊥) = sqrt(1 + (pz^2 + p⊥^2) / mc²)
+  integrand = NewbergerRelativistic(S, ω, kz, k⊥)
 
-  function denominator(pz⊥)
-    pz, p⊥ = pz⊥
-    output = fγ(pz, p⊥) * ω - kz * pz / S.m - nΩ
-    iszero(output) && (output += convert(eltype(output), Inf))
-    return output
-  end
-
-  function momentumpoles(p⊥)
-    a = 1 - (kz * c₀ / ω)^2
-    b = - 2 * nΩ * kz * mc² / ω^2
-    c = (p⊥ + mc² * S.m - mc² * S.m * (nΩ / ω)^2)
-    pzroot1 = (-b + sqrt(b^2 - 4 * a * c)) / (2a)
-    pzroot2 = (-b - sqrt(b^2 - 4 * a * c)) / (2a)
-    return (Pole(pzroot1, kz), Pole(pzroot2, kz))
-  end
-
-  function numerator(pz⊥)
-    pz, p⊥ = pz⊥
-
-    # Following Brambilla's book
-    γξ⊥ = p⊥ * k⊥ / S.m / S.Ω
-
-    Jn₋ = besselj(n - 1, γξ⊥)
-    Jn₊ = iszero(n) ? -Jn₋ : besselj(n + 1, γξ⊥)
-    Jn = iszero(n) ? besselj(n, γξ⊥) : γξ⊥ / 2n * (Jn₋ + Jn₊)
-    Jnd = (Jn₋ - Jn₊) / 2
-
-    nJn_γξ⊥ = iszero(γξ⊥) ? typeof(γξ⊥)(isone(abs(n)) / 2) : n * Jn / γξ⊥
-
-    dfdpz = DualNumbers.dualpart(S(Dual(pz, 1), p⊥))
-    dfdp⊥ = DualNumbers.dualpart(S(pz, Dual(p⊥, 1)))
-
-    γ = fγ(pz, p⊥)
-
-    @cse @muladd begin
-      θF = p⊥ * dfdpz - pz * dfdp⊥
-
-      O⊥p⊥ = 2π * p⊥ * (ω * dfdp⊥ + kz / S.m / γ * θF)
-      Ob1p⊥ = 2π * p⊥ * (p⊥ * ω * dfdpz - nΩ / γ * θF)
-      Ob2p⊥ = 2π * (p⊥ * pz * ω * dfdpz - nΩ / γ * pz * θF)
-
-      m11 = nJn_γξ⊥^2 * p⊥ * O⊥p⊥
-      m12 = im * nJn_γξ⊥ * Jnd * p⊥ * O⊥p⊥
-      m13 = nJn_γξ⊥ * Jn * Ob1p⊥
-      m21 = -m12 # Onsager
-      m22 = Jnd^2 * p⊥ * O⊥p⊥
-      m23 = -im * Jn * Jnd * Ob1p⊥
-      # m31 = nJn_γξ⊥ * Jn * pz * O⊥p⊥
-      m31 = m13 # Onsager
-      # m32 = im * Jn * Jnd * pz * O⊥p⊥
-      m32 = -m23 # Onsager
-      m33 = Jn^2 * Ob2p⊥
-    end
-
-    return @SArray [m11 m12 m13; m21 m22 m23; m31 m32 m33]
-  end
-  integrand(pz⊥) = numerator(pz⊥) ./ denominator(pz⊥)
-
-  bound = 1 - 1000 * eps()
+  bound = 1 - 1e8 * eps()
 
   function integral2D()
     return first(HCubature.hcubature(
@@ -82,30 +204,43 @@ function relativisticmomentum(S::CoupledRelativisticSpecies,
   innertol = outertol / 10 # inner loop has higher accuracy than outer
 
   function principal(p⊥) # TODO remove probable type instability
-    integrandpz = x -> integrand((x, p⊥))
-    pzroots = momentumpoles(p⊥)
-    objective = if all(isreal, pzroots)
-      transformaboutroots(integrandpz, (real.(pzroots))...)
-    else
-      transformfrominfinity(integrandpz, S.F.normalisation[1])
+    function allprincipals(n) # TODO remove probable type instability
+      rh = RelativisticHarmonic(S, ω, kz, k⊥, n)
+      pchar = S.m * real(ω / kz)
+      pzroots = momentumpoles(rh, p⊥, n)
+      @assert length(pzroots) == 1
+      function integrandpz(x)
+        x *= pchar
+        return rh((x, p⊥)) .* pchar
+      end
+      objective = transformaboutroots(integrandpz, real(pole(pzroots[1])/pchar))
+
+      polefix = wavedirectionalityhandler(pzroots[1])
+      principal = polefix.(first(QuadGK.quadgk(objective, -bound, bound)))
+      principal = sign(real(kz)) .* real(principal) .+ im .* imag(principal)
+
+      @assert !any(isnan, principal)# "principal = $principal"
+      return principal
     end
-    principal = first(QuadGK.quadgk(objective, -bound, bound, rtol=innertol))
-    @assert !any(isnan, principal)# "principal = $principal"
-    return principal
+    return converge(allprincipals, C.options.summation_tol)
   end
   function relativisticresidue(p⊥)
-    integrandpz(x) = integrand((x, p⊥))
-    p⊥roots = momentumpoles(p⊥)
-    function localresidue(pole)
-      polefix = wavedirectionalityhandler(pole)
-      rpradius = (iszero(imag(pole)) ? abs(pole) : abs(imag(pole))) * sqrt(eps())
-      rp = residuepartadaptive(integrandpz, pole, rpradius, 64,
-        C.options.summation_tol, Nmax=2048)
-      output = polefix.(residue(rp, polefix(pole)))
-      output = Complex.((real(kz) >= 0 ? 1 : -1) * real(output), imag(output))
-      return output
+    integrandn = NewbergerRelativistic(S, ω, kz, k⊥)
+    function alllocalresidues(n)
+      integrandpz(x) = integrandn((x, p⊥))
+      p⊥roots = momentumpoles(integrandn, p⊥, n)
+      function localresidue(pole)
+        polefix = wavedirectionalityhandler(pole)
+        rpradius = abs(pole) * sqrt(eps())
+        rp = residuepartadaptive(integrandpz, pole, rpradius, 64,
+          C.options.summation_tol)
+        output1 = polefix.(residue(rp, polefix(pole)))
+        output1 = sign(real(kz)) .* real(output1) .+ im .* imag(output1)
+        return output1
+      end
+      return mapreduce(localresidue, +, p⊥roots)
     end
-    output = mapreduce(localresidue, +, p⊥roots)
+    output = converge(alllocalresidues, C.options.summation_tol)
     @assert !any(isnan, output)# "output = $output"
     return output
   end
@@ -125,3 +260,4 @@ function relativisticmomentum(S::CoupledRelativisticSpecies,
   result += integralsnested1D(relativisticresidue, norm(result))
   return result
 end
+
