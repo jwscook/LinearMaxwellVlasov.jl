@@ -17,6 +17,16 @@ end
 uniqueid(o::Options) = o._uniqueid
 
 
+"""
+    defaults(::Type{T}=Float64)where{T}
+
+The default settings for the Options object.
+
+...
+# Arguments
+- `::Type{T}=Float64where{T}`: the number type to express the tolerances in
+...
+"""
 function defaults(::Type{T}=Float64) where {T}
   output = Dict{Symbol, Any}()
   output[:quadrature_rtol] = eps(T)^(3//4)
@@ -28,6 +38,20 @@ function defaults(::Type{T}=Float64) where {T}
   return output
 end
 
+"""
+    Options(::Type{T}=Float64;kwargstuple...)where{T}
+
+Create an Options object a set of kwargs. Best to read the code to see what counts
+as a duplicate. Copying that logic here will only create broken docs in the future.
+
+...
+# Arguments
+- `::Type{T}=Float64`: the number type to express the tolerances in
+Optional args:
+- `kwargstuple...`: the keyword arguments that are preferred over the defaults
+...
+
+"""
 function Options(::Type{T}=Float64; kwargstuple...) where {T}
   kwargs = Dict(kwargstuple)
   args = defaults(T)

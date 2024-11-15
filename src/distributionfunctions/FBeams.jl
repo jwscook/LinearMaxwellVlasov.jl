@@ -10,6 +10,19 @@ struct FBeam{T<:Number, U<:Number, V<:Function
     return new{T, U, V}(vth, vd, F, _uniqueid)
   end
 end
+"""
+    FBeam(vth::T,vd::U=0.0)where{T<:Number,U<:Number}
+
+Create a suitably normalised parallel distribution function
+proportational to `exp(-(vz-vd)^2/vthz^2)`
+
+...
+# Arguments
+- `vth::T`: thermal velocity [m/s]
+- `vd::U=0.0`: bulk parallel velocity [m/s]
+...
+
+"""
 function FBeam(vth::T, vd::U=0.0) where {T<:Number, U<:Number}
   @assert vth > 0.0
   smp = ShiftedMaxwellianParallel(vth, vd)

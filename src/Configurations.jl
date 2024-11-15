@@ -4,6 +4,21 @@ mutable struct Configuration{T,U,V,W}
   options::Options{W}
 end
 
+"""
+    Configuration(args...)
+
+This holds the frequency, wavenumber and options object of the calculation
+i.e. everything except the plasma.
+
+...
+# Arguments
+- `args...`:
+...
+
+# Example
+```julia
+```
+"""
 function Configuration(args...)
   frequency = filter(x->typeof(x) <: Number, args)
   wavenumber = filter(x->typeof(x) <: Wavenumber, args)

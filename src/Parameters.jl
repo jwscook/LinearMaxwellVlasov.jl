@@ -6,13 +6,58 @@ of the plasma
 """
 alfvenspeed(Π_Ωs) = c₀ / sqrt(sum(Π_Ωs.^2))
 
+"""
+    plasmafrequency(n::Real,mass::Float64,Z::Int=1)
+
+...
+# Arguments
+- `n::Real`: species number density in m^-3
+- `mass::Float64`: particle mass in kg
+- `Z::Int=1`: Charge number
+...
+"""
 function plasmafrequency(n::Real, mass::Float64, Z::Int=1)
   return sqrt((Z * q₀)^2 * n / mass / ϵ₀)
 end
+"""
+    cyclotronfrequency(B::Real,mass::Float64,Z::Int=1)
+
+...
+# Arguments
+- `B::Real`: magnetic field in T
+- `mass::Float64`:  mass in kg
+- `Z::Int=1`: charge number
+...
+
+"""
 function cyclotronfrequency(B::Real, mass::Float64, Z::Int=1)
   return Z * q₀ * B / mass
 end
+
+"""
+  thermalspeed(ϵ_V::Real, mass::Real)
+
+Thermal speed defined as `sqrt(2 * q₀ * ϵ_V / mass)`
+'''
+# Arguments
+-  `ϵ_V::Real`: energy in electron Volts
+- `mass::Real`: particle mass in kg
+'''
+"""
 thermalspeed(ϵ_V::Real, mass::Real) = sqrt(2 * q₀ * ϵ_V / mass)
+
+"""
+  thermalmomentum(ϵ_V::Real, mass::Real)
+
+Thermal momentum is defined as `sqrt(2 * q₀ * ϵ_V * mass)`
+
+'''
+# Arguments
+-  `ϵ_V::Real`: energy in electron Volts
+- `mass::Real`: particle mass in kg
+'''
+"""
+
 thermalmomentum(ϵ_V::Real, mass::Real) = thermalspeed(ϵ_V, mass) * mass
 
 

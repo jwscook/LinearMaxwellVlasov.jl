@@ -10,6 +10,19 @@ struct FRing{T<:Number, U<:Number, V<:Function
     return new{T, U, V}(vth, vd, F, _uniqueid)
   end
 end
+"""
+    FRing(vth::T,vd::U=0.0)where{T<:Number,U<:Number}
+
+Create a suitably normalised ring distribution in perpendicular velocity
+proportional to `exp(-(v⊥-vd)^2/vthz^2)`
+
+...
+# Arguments
+- `vth::T`: thermal velocity [m/s]
+- `vd::U=0.0`: bulk perpendicular velocity [m/s]
+...
+
+"""
 function FRing(vth::T, vd::U=0.0) where {T<:Number, U<:Number}
   @assert vth > 0.0
   return FRing(vth, vd, ShiftedMaxwellianPerpendicular(vth, vd))
