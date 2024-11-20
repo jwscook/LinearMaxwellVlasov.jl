@@ -107,6 +107,20 @@ struct CoupledVelocitySpecies{
   F::TF
 end
 (S::CoupledVelocitySpecies)(vz, v⊥) = S.F(vz, v⊥)
+"""
+    CoupledVelocitySpecies(Π::Float64,Ω::Float64,vthz::Float64,vth⊥::Float64=vthz,vzdrift::Float64=0.0,v⊥drift::Float64=0.0)
+
+...
+# Arguments
+- `Π::Float64`: plasma frequency [rad/s]
+- `Ω::Float64`: cyclotron frequency [rad/s]
+- `vthz::Float64`: parallel thermal speed [m/s]
+- `vth⊥::Float64=vthz`: perpendicular thermal speed [m/s]
+- `vzdrift::Float64=0.0`: parallel bulk speed [m/s]
+- `v⊥drift::Float64=0.0`: perpendicular bulk speed [m/s]
+...
+
+"""
 function CoupledVelocitySpecies(Π::Float64, Ω::Float64, vthz::Float64,
     vth⊥::Float64=vthz, vzdrift::Float64=0.0, v⊥drift::Float64=0.0)
   return CoupledVelocitySpecies(Π, Ω,
@@ -144,6 +158,20 @@ struct CoupledRelativisticSpecies{
 end
 (S::CoupledRelativisticSpecies)(pz, p⊥) = S.F(pz, p⊥)
 
+"""
+    CoupledRelativisticSpecies(Π,Ω,m,pthz::Number,pth⊥=pthz,pzdrift=0)
+
+...
+# Arguments
+- `Π`: classical plasma frequency [rad/s]
+- `Ω`: classical cyclotron frequency [rad/s]
+- `m`: mass [kg]
+- `pthz::Number`: parallel thermal momentum [kg m/s]
+- `pth⊥=pthz`: perpendicular thermal moment [kg m/s]
+- `pzdrift=0`: parallel bulk momentum [kg m/s]
+...
+
+"""
 function CoupledRelativisticSpecies(Π, Ω, m, pthz::Number, pth⊥=pthz, pzdrift=0)
   return CoupledRelativisticSpecies(Π, Ω, m,
     FRelativisticNumerical(pthz, pth⊥, pzdrift))
@@ -223,6 +251,18 @@ is_normalised(S::AbstractFluidSpecies) = true
 ColdSpecies(s::AbstractKineticSpecies) = ColdSpecies(s.Π, s.Ω)
 ColdSpecies(s::WarmSpecies) = ColdSpecies(s.Π, s.Ω)
 WarmSpecies(s::ColdSpecies) = WarmSpecies(s.Π, s.Ω, 0.0)
+"""
+    WarmSpecies(s::T,γ=5/3)where{T<:AbstractSeparableVelocitySpecies{
+
+Create a warm plasma species from the AbstractSeparableVelocitySpecies
+
+...
+# Arguments
+- `s::T`:
+- `γ=5/3where{T<:AbstractSeparableVelocitySpecies{`:
+...
+
+"""
 function WarmSpecies(s::T, γ=5/3) where {T<:AbstractSeparableVelocitySpecies{
     <:AbstractFParallelAnalytical,
     <:AbstractFPerpendicularAnalytical}}

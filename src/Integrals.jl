@@ -39,6 +39,23 @@ Cache() = Cache(Dict{UInt64,CacheDict{ParallelCache}}(),
 typehash(::Type{ParallelCache}, s) = uniqueid(s.Fz)::UInt64
 typehash(::Type{PerpendicularCache}, s) = uniqueid(s.F⊥)::UInt64
 
+"""
+    Base.get!(f::F,data::Dict{UInt64,CacheDict{C}},species,config)where{F<:Function,C<:AbstractCacheType}
+
+Return the correct cache dictionary for the given species and configuration.
+
+This creates a CacheKeyOp with the arguments given so that it can create a
+CacheDict with the correct type, which then populates the CacheDict if it's empty.
+This process acts as a function barrier to get better type inference.
+
+...
+# Arguments
+- `f::F`: The function to cache
+- `data::Dict{UInt64`: the dictionary of caches
+- `species`: The species argument to f
+- `config`: The configuration argument to f
+...
+"""
 function Base.get!(f::F, data::Dict{UInt64,CacheDict{C}}, species, config
     ) where {F<:Function, C<:AbstractCacheType}
   key = typehash(C, species)
@@ -47,6 +64,19 @@ function Base.get!(f::F, data::Dict{UInt64,CacheDict{C}}, species, config
   return get!(()->CacheDict{C}(subkey=>cacheop(f(args...))), data, key)
 end
 
+"""
+    Base.get!(f::F,cache::CacheDict{C,V},i...)::Vwhere{F<:Function,C<:AbstractCacheType,V}
+
+description
+
+...
+# Arguments
+- `f::F`:
+- `cache::CacheDict`:
+- `i...`:
+...
+
+"""
 function Base.get!(f::F, cache::CacheDict{C,V}, i...
     )::V where {F<:Function, C<:AbstractCacheType, V}
   key, cacheop = CacheKeyAndOp{C}(i...)
@@ -55,10 +85,25 @@ function Base.get!(f::F, cache::CacheDict{C,V}, i...
 end
 
 """
+    parallel_integral(species::S,config::Configuration,parallelcaches=Dict{UInt64,CacheDict{ParallelCache}}()) where {S}
+
 Memoise the inputs to the integrals; export the memoised function, and
-the dictionary of inputs -> outputs
+the dictionary of inputs -> outputs.
+This uses a parallel cache which holds the logic for the integrals and
+ensure that the values are only calculated once.
 It only matters what n-m is, not the values of n and m individually
 So change (n, m)->(n-m, 0) to do fewer calculations
+
+...
+# Arguments
+- `species::S`:  the species to do parallel integrals over
+- `config::Configuration`:  the configuration holding frequency and wavenumber, and options.
+- `parallelcaches=Dict{UInt64,CacheDict{ParallelCache}}`:  The dict to store parallel integrals
+...
+
+# Example
+```julia
+```
 """
 function parallel_integral(species::S, config::Configuration,
     parallelcaches=Dict{UInt64,CacheDict{ParallelCache}}()) where {S}

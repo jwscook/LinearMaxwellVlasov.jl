@@ -6,14 +6,59 @@ of the plasma
 """
 alfvenspeed(Π_Ωs) = c₀ / sqrt(sum(Π_Ωs.^2))
 
-function plasmafrequency(n::Real, mass::Float64, Z::Int=1)
+"""
+    plasmafrequency(n::Number,mass::Number,Z::Number=1)
+
+...
+# Arguments
+- `n::Number`: species number density in m^-3
+- `mass::Number`: particle mass in kg
+- `Z::Number=1`: Charge number
+...
+"""
+function plasmafrequency(n::Number, mass::Number, Z::Number=1)
   return sqrt((Z * q₀)^2 * n / mass / ϵ₀)
 end
-function cyclotronfrequency(B::Real, mass::Float64, Z::Int=1)
+"""
+    cyclotronfrequency(B::Number,mass::Number,Z::Number=1)
+
+...
+# Arguments
+- `B::Number`: magnetic field in T
+- `mass::Number`:  mass in kg
+- `Z::Number=1`: charge number
+...
+
+"""
+function cyclotronfrequency(B::Number, mass::Number, Z::Number=1)
   return Z * q₀ * B / mass
 end
-thermalspeed(ϵ_V::Real, mass::Real) = sqrt(2 * q₀ * ϵ_V / mass)
-thermalmomentum(ϵ_V::Real, mass::Real) = thermalspeed(ϵ_V, mass) * mass
+
+"""
+  thermalspeed(ϵ_V::Number, mass::Number)
+
+Thermal speed defined as `sqrt(2 * q₀ * ϵ_V / mass)`
+'''
+# Arguments
+-  `ϵ_V::Number`: energy in electron Volts
+- `mass::Number`: particle mass in kg
+'''
+"""
+thermalspeed(ϵ_V::Number, mass::Number) = sqrt(2 * q₀ * ϵ_V / mass)
+
+"""
+  thermalmomentum(ϵ_V::Number, mass::Number)
+
+Thermal momentum is defined as `sqrt(2 * q₀ * ϵ_V * mass)`
+
+'''
+# Arguments
+-  `ϵ_V::Number`: energy in electron Volts
+- `mass::Number`: particle mass in kg
+'''
+"""
+
+thermalmomentum(ϵ_V::Number, mass::Number) = thermalspeed(ϵ_V, mass) * mass
 
 
 """
@@ -22,7 +67,7 @@ G. A. Cottrell, The excitation of obliquely propagating fast Alfven waves at
 fusion ion cyclotron harmonics, Phys. Plasmas 1 (6), June 1994
 """
 function zerobetamagnetoacousticfrequency(Va::Number, K::Wavenumber,
-    Ωi::Number, slowfast::Int)
+    Ωi::Number, slowfast::Integer)
   kz = parallel(K)
   k⊥ = perpendicular(K)
   k² = kz^2 + k⊥^2
@@ -39,7 +84,7 @@ function fastzerobetamagnetoacousticfrequency(Va::Number,
 end
 
 function magnetoacousticfrequency(Va::Number, Cs::Number,
-    K::Wavenumber, slowfast::Int)
+    K::Wavenumber, slowfast::Integer)
   return abs(K) * magnetoacousticspeed(Va, Cs, K, slowfast)
 end
 function slowmagnetoacousticfrequency(Va::Number, Cs::Number,
@@ -56,7 +101,7 @@ function shearfrequency(Va::Number, K::Wavenumber)
 end
 
 function magnetoacousticspeed(Va::Number, Cs::Number,
-    K::Wavenumber, slowfast::Int)
+    K::Wavenumber, slowfast::Integer)
   @assert abs(slowfast) == 1
   a = 1
   b = - (Va^2 + Cs^2)

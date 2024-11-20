@@ -123,7 +123,23 @@ function integrate(f::AbstractFParallelNumerical, numerator_kernel::T,
 end
 
 """
-Integration of Abstract Arbitrary FPerpendicular
+    integrate(f::AbstractFPerpendicular,kernel::T,∂F∂v::Bool,tol::Tolerance=Tolerance()
+
+Integration of Abstract Arbitrary FPerpendicular with respect to kernel where
+the distribution function may be differentiated. If quadrature is involved it
+will adaptively calculate the integral until the tolerance is met.
+
+...
+# Arguments
+- `f::AbstractFPerpendicular`:
+- `kernel::T`: the kernel e.g. v⊥^2 * BesselJ(n, v⊥^2 * β^2)^2 etc.
+- `∂F∂v::Bool`:  differentiate with respect to velocity, or not.
+- `tol::Tolerance=Tolerance`:
+...
+
+# Example
+```julia
+```
 """
 function integrate(f::AbstractFPerpendicular, kernel::T,
     ∂F∂v::Bool, tol::Tolerance=Tolerance()

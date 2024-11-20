@@ -1,4 +1,20 @@
+"""
+    fastisapprox(n,x,y,atol,rtol,nans)
 
+...
+# Arguments
+- `n`: normalisation
+- `x`: compare this
+- `y`: with that
+- `atol`: absolute tolerance
+- `rtol`: relative tolerance
+- `nans`: whether to treat NaNs as equal
+...
+
+# Example
+```julia
+```
+"""
 function fastisapprox(n, x, y, atol, rtol, nans)
   (n <= max(abs2(atol), abs2(rtol) * max(x, y))) && return true
   return nans ? (isnan(x) && isnan(y)) : false
@@ -22,7 +38,23 @@ function fastisapprox(A::AbstractArray{T, N}, B::AbstractArray{T, N};
   return fastisapprox(n, x, y, atol, rtol, nans)
 end
 
-@inline function converge(f::T, tol::Tolerance=Tolerance()) where {T<:Function}
+"""
+    converge(f::T,tol::Tolerance=Tolerance()) where {T}
+
+Sum the output of f starting with argument 0 and (1,-1), (2,-2)... etc
+until the convergence criterion is met based on the tolerance
+
+...
+# Arguments
+- `f::T`: input function or functor
+- `tol::Tolerance=Tolerance`: Tolerance object containing relative and absolute tolerances
+...
+
+# Example
+```julia
+```
+"""
+@inline function converge(f::T, tol::Tolerance=Tolerance()) where {T}
   l = u = n₀ = 0
   value = f(n₀) # f(::Int) is summed outwards from 0 to ± Inf until convergence
   delta = f(l -= 1) + f(u += 1)
