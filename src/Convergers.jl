@@ -1,4 +1,3 @@
-
 """
     fastisapprox(n,x,y,atol,rtol,nans)
 

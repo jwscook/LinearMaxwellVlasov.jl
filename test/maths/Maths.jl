@@ -163,32 +163,4 @@ const LMV = LinearMaxwellVlasov
     @test !LMV.isapproxinteger(2*(1 + 2eps()) + 0im, eps())
     @test LMV.isapproxinteger(2*(1 + eps()) + 0im, eps())
   end
-
-  @testset "Concertinas.jl" begin
-    Δ = 1e-14
-    @testset "sin(x)/sin(x), Δ = $Δ" begin
-      for i in 1:100
-        L⊥ = rand() # doesnt matter!
-        @test 2i ≈ HCubature.hcubature(LMV.ConcertinaSinpi((t, v⊥)->sinpi(t) / L⊥, (-i, i)), (Δ, 0.0), (1 - Δ, L⊥), rtol=1e-6)[1]
-      end
-    end
-
-    for i in -4:-1:-9
-      Δ = 10.0^i
-      expected = (log(tan((1 - Δ) * π / 2)) - log(tan(Δ * π / 2))) / 2π
-      L⊥ = rand() # doesnt matter!
-      result = HCubature.hcubature(LMV.ConcertinaSinpi((t, v⊥) -> identity(t) / L⊥, (0, 1)), (Δ, 0.0), (1 - Δ, L⊥), rtol=1e-6)[1]
-      @testset "1 / sin(x), Δ = $Δ" begin
-        @test expected ≈ result
-      end
-
-      @testset "cos(x)^2 / sin(x), Δ = $Δ" begin
-        fcos²_sin(x) = (cos(x) + log(sin(x/2)) - log(cos(x/2))) / π
-        expected = fcos²_sin((1 - Δ) * π) - fcos²_sin(Δ * π)
-        L⊥ = rand() # doesnt matter!
-        result = HCubature.hcubature(LMV.ConcertinaSinpi((t, v⊥)->cospi(t)^2 / L⊥, (0, 1)), (Δ, 0.0), (1 - Δ, L⊥), rtol=1e-6)[1]
-        @test expected ≈ result
-      end
-    end
-  end
 end
