@@ -193,3 +193,40 @@ function transformtopolar(f::T) where {T}
   fpolar(rθ::AbstractVector{T}) where {T<:Number} = f(parallelperpfrompolar(rθ))
   return fpolar
 end
+
+struct ConcertinaSinpi{F}
+  numerator::F
+  az::Tuple{Int, Int} # the left and right hand integral bounds in normalised units
+  function ConcertinaSinpi(num, az)
+    @assert az[1] < az[2]
+    return new{typeof(num)}(num, az)
+  end
+end
+
+"""
+    (c::ConcertinaSinpi)(t)
+
+Evaluate and sum the ConcertinaSinpi function at location `(t, v⊥)`
+where t ∈ (0, 1). t is mapped to (0, 1) + az[1]:az[2], so that
+it takes into account the sign of the denominator, sinpi(t + ax[1]:azp[2]),
+before finally dividing by |sinpi(t)|.
+
+...
+# Arguments
+- `c::ConcertinaSinpi(tv⊥)`:
+...
+"""
+function (c::ConcertinaSinpi)(tv⊥)
+  t, v⊥ = tv⊥
+  @assert 0 < t < 1
+  n = c.numerator(t, v⊥)
+  breaks = c.az[1]:c.az[2]
+  output = zero(n)
+  sgn = sign(sinpi((breaks[1] + breaks[2]) / 2))
+  for i in 2:length(breaks)
+    term = c.numerator(t + breaks[i-1], v⊥)
+    output += sgn * term
+    sgn *= -1
+  end
+  return output / sinpi(t)
+end
