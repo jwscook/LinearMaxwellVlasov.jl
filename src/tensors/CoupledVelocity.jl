@@ -154,6 +154,22 @@ struct NewbergerClassical{S,T,U,V,W} <: AbstractCoupledIntegrand
   k⊥::W
 end
 function (nc::NewbergerClassical)(vz, v⊥)
+  return numerator(nc, vz, v⊥) / denominator(nc, vz, v⊥)
+end
+function pseudoharmonic(nc::NewbergerClassical, vz)
+  ω = nc.ω
+  Ω = nc.Ω
+  kz = nc.kz
+  a = (ω - kz * vz) / Ω
+  return a
+end
+function denominator(nc::NewbergerClassical, vz, v⊥)
+  a = pseudoharmonic(nc, vz)
+  sinπa = sinpi(a)
+  @assert isfinite(sinπa)
+  return sinπa
+end
+function numerator(nc::NewbergerClassical, vz, v⊥)
   S = nc.species
   ω = nc.ω
   Ω = nc.Ω
@@ -165,9 +181,8 @@ function (nc::NewbergerClassical)(vz, v⊥)
   T = promote_type(typeof.((dfdvz, dfdv⊥, ω, Ω, kz, k⊥))...)
   (iszero(dfdvz) && iszero(dfdv⊥)) && return @MArray zeros(T, 3, 3)
 
-  a = (ω - kz * vz) / Ω
-  π_sinπa = π / sinpi(a)
-  @assert isfinite(π_sinπa)
+  a = pseudoharmonic(nc, vz)
+  sinπa = denominator(nc, vz, v⊥)
   z = k⊥ * v⊥ / Ω
 
   # it's faster to get the besselj derivatives with normal derivative
@@ -192,14 +207,14 @@ function (nc::NewbergerClassical)(vz, v⊥)
   @assert isfinite(J_ad)
 
   @cse begin
-    Q_a = π_sinπa * J_a * Ja # Eq 33
-    Qd_a = π_sinπa * (J_ad * Ja + J_a * Jad) # Eq 33
+    Q_a = π * J_a * Ja # Eq 33
+    Qd_a = π * (J_ad * Ja + J_a * Jad) # Eq 33
     Xzz = 2π * Ω * vz * (v⊥ * dfdvz - vz * dfdv⊥) / Ω # Part of Eq 34 (x'ed by ω/Ω)
     U = (kz * v⊥ * dfdvz + (ω - kz * vz) * dfdv⊥) / Ω # Eq 4 (multiplied by ω/Ω)
-    T11 = a / (k⊥ / Ω)^2 * (a * Q_a - 1)
+    T11 = a / (k⊥ / Ω)^2 * (a * Q_a - sinπa)
     T12 = im / 2z * a * Qd_a * v⊥^2
-    T13 = (a * Q_a - 1) / (k⊥ / Ω) * vz
-    T22 = (π_sinπa * J_ad * Jad * v⊥^2 + a / (k⊥ / Ω)^2)
+    T13 = (a * Q_a - sinπa) / (k⊥ / Ω) * vz
+    T22 = (π * J_ad * Jad * v⊥^2 + sinπa * a / (k⊥ / Ω)^2)
     T23 = - vz * im / 2 * Qd_a * v⊥
     T33 = Q_a * vz^2
     T21 = -T12
@@ -209,7 +224,7 @@ function (nc::NewbergerClassical)(vz, v⊥)
   Tij = @MArray [T11 T12 T13; T21 T22 T23; T31 T32 T33]
   @assert all(isfinite, Tij) Tij
   Xij = (2π * U) .* Tij # Eq 34, part
-  Xij[3, 3] += Xzz
+  Xij[3, 3] += Xzz * sinπa
   return Xij # Eq 34 (U is multiplied by ω)
 end
 
@@ -231,20 +246,17 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
 
   function principal()
     @assert !iszero(kz)
-    @assert iszero(imag(kz)) || iszero(imag(ω))
-    function allprincipals(n)
-      harmonicsum = HarmonicSum(S, ω, Ω, kz, k⊥, n)
-      pole = Pole(C.frequency, C.wavenumber, n, S.Ω)
-      @assert iszero(imag(pole))
-      principalintegrand(vz, v⊥) = -numerator(harmonicsum, (vz, v⊥)) / kz
-      folded = foldnumeratoraboutpole(principalintegrand, real(float(pole)))
-      output = first(HCubature.hcubature(folded,
-        (0.0, S.F.lower), (S.F.upper, S.F.upper), initdiv=16,
-        rtol=C.options.quadrature_tol.rel, atol=C.options.quadrature_tol.abs))
-      @assert !any(isnan, output)
-      return output
-    end
-    return converge(allprincipals, C.options.summation_tol)
+    @assert iszero(imag(kz)) && iszero(imag(ω))
+    az = ceil(Int, abs(S.F.upper * kz / Ω)) + 1
+    nc = NewbergerClassical(S, ω, Ω, kz, k⊥)
+    principalintegrand(t, v⊥) = numerator(nc, (ω - t * Ω) / kz, v⊥) * abs(Ω / kz)
+    principalintegrand(tv⊥) = principalintegrand(tv⊥...)
+    concertinasinpi = ConcertinaSinpi(principalintegrand, (-az, az))
+    output = first(HCubature.hcubature(concertinasinpi,
+      (sqrt(eps()), S.F.lower), (1.0 - sqrt(eps()), S.F.upper), initdiv=16,
+      rtol=C.options.quadrature_tol.rel, atol=C.options.quadrature_tol.abs))
+    @assert !any(isnan, output)
+    return output
   end
 
   function coupledresidue(v⊥, ::Type{T0})::T0 where T0
@@ -281,9 +293,10 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
   else
     @assert isreal(ω) && isreal(kz)
     @assert !iszero(kz) # obviously
-    @warn "Coupled species calculations with zero imaginary pole coupled species are slow and inaccurate"
-    pp = principal()
-    pp .+ perpendicularintegral(v⊥->coupledresidue(v⊥, typeof(pp)), norm(pp))
+    #@warn "Coupled species calculations with zero imaginary pole coupled species are slow and inaccurate"
+    pp = principal()#zeros(ComplexF64, 3, 3)#
+    cr = perpendicularintegral(v⊥->coupledresidue(v⊥, typeof(pp)), norm(pp))
+    pp .+ cr
   end
   return result
 end
