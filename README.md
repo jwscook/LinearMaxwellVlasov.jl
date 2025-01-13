@@ -1,7 +1,7 @@
 # LinearMaxwellVlasov.jl
 
 ![CI](https://github.com/jwscook/LinearMaxwellVlasov.jl/workflows/CI/badge.svg)
-[![codecov.io](http://codecov.io/github/jwscook/LinearMaxwellVlasov.jl/coverage.svg?branch=main)](http://codecov.io/github/jwscook/LinearMaxwellVlasov.jl?branch=main)
+[![codecov](https://codecov.io/github/jwscook/LinearMaxwellVlasov.jl/branch/main/graph/badge.svg?token=h5G5CoGX2d)](https://codecov.io/github/jwscook/LinearMaxwellVlasov.jl)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.6529288.svg)](https://doi.org/10.5281/zenodo.6529288)
 
 
@@ -12,7 +12,7 @@ This code solves for the dispersion relation of the linearised Maxwell-Vlasov eq
  1. warm fluid with optionally distinct parallel and perpendicular sound speeds
  1. kinetic (bi-)Maxwellian with optional parallel drift
  1. kinetic parallel Maxwellian with optional drift with "ring" perpendicular drift
- 1. arbitrary decoupled parallel and perpendicular distribution functions. 
+ 1. arbitrary decoupled parallel and perpendicular distribution functions.
  1. relativistic species (not battle tested)
 
 It is possible to solve for complex wavenumbers indicative of convective instabilities.

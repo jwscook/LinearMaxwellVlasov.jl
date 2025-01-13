@@ -2,8 +2,6 @@
 """
     fastisapprox(n,x,y,atol,rtol,nans)
 
-
-
 ...
 # Arguments
 - `n`: normalisation
