@@ -241,7 +241,8 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
   function integral2D()
     return first(HCubature.hcubature(integrand,
       (-S.F.upper, lower), (S.F.upper, S.F.upper), initdiv=16,
-      rtol=C.options.quadrature_tol.rel, atol=C.options.quadrature_tol.abs))
+      rtol=C.options.quadrature_tol.rel, atol=C.options.quadrature_tol.abs,
+      maxevals=C.options.cubature_maxevals))
   end
 
   function principal()
@@ -254,7 +255,8 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
     concertinasinpi = ConcertinaSinpi(principalintegrand, (-az, az))
     output = first(HCubature.hcubature(concertinasinpi,
       (sqrt(eps()), S.F.lower), (1.0 - sqrt(eps()), S.F.upper), initdiv=16,
-      rtol=C.options.quadrature_tol.rel, atol=C.options.quadrature_tol.abs))
+      rtol=C.options.quadrature_tol.rel, atol=C.options.quadrature_tol.abs,
+      maxevals=C.options.cubature_maxevals))
     @assert !any(isnan, output)
     return output
   end

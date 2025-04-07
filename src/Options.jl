@@ -4,14 +4,17 @@ struct Options{T<:Number}
   summation_tol::Tolerance{T}
   memoiseparallel::Bool
   memoiseperpendicular::Bool
+  cubature_maxevals::Int
   _uniqueid::UInt64
   function Options(quadrature_tol::Tolerance{T},
       summation_tol::Tolerance{T},
-      memoiseparallel::Bool, memoiseperpendicular::Bool) where {T<:Number}
+      memoiseparallel::Bool, memoiseperpendicular::Bool,
+      cubature_maxevals::Int) where {T<:Number}
     _uniqueid = hash((quadrature_tol, summation_tol,
-      memoiseparallel, memoiseperpendicular), hash(:Options))
+      memoiseparallel, memoiseperpendicular, cubature_maxevals), hash(:Options))
     return new{T}(quadrature_tol, summation_tol,
-      memoiseparallel, memoiseperpendicular, _uniqueid)
+      memoiseparallel, memoiseperpendicular,
+      cubature_maxevals, _uniqueid)
   end
 end
 uniqueid(o::Options) = o._uniqueid
@@ -35,6 +38,7 @@ function defaults(::Type{T}=Float64) where {T}
   output[:summation_atol] = zero(T)
   output[:memoiseparallel] = true
   output[:memoiseperpendicular] = true
+  output[:cubature_maxevals] = typemax(Int)
   return output
 end
 
@@ -62,7 +66,10 @@ function Options(::Type{T}=Float64; kwargstuple...) where {T}
     :quad_atol => :quadrature_atol, :quad_rtol => :quadrature_rtol,
     :sum_atol => :summation_atol, :sum_rtol => :summation_rtol,
     :atols => (:quadrature_atol, :summation_atol),
-    :rtols => (:quadrature_rtol, :summation_rtol),)
+    :rtols => (:quadrature_rtol, :summation_rtol),
+    :maxevals => :cubature_maxevals,
+    :cuba_evals => :cubature_maxevals,
+   )
 
   for (kwargkey, argkeys) ∈ specialcasekeys
     haskey(kwargs, kwargkey) || continue
@@ -79,5 +86,6 @@ function Options(::Type{T}=Float64; kwargstuple...) where {T}
   quadrature_tol = Tolerance{T}(args[:quadrature_rtol], args[:quadrature_atol])
   summation_tol = Tolerance{T}(args[:summation_rtol], args[:summation_atol])
   return Options(quadrature_tol, summation_tol,
-    args[:memoiseparallel], args[:memoiseperpendicular])
+    args[:memoiseparallel], args[:memoiseperpendicular],
+    args[:cubature_maxevals])
 end
