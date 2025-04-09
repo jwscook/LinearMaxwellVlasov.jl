@@ -20,6 +20,7 @@ using Test
     tol = Tolerance(rtol=0.0, atol=1.0)
     o = Options(tols=tol)
     @test tol == o.quadrature_tol
+    @test tol == o.cubature_tol
     @test tol == o.summation_tol
   end
 

@@ -241,7 +241,7 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
   function integral2D()
     return first(HCubature.hcubature(integrand,
       (-S.F.upper, lower), (S.F.upper, S.F.upper), initdiv=16,
-      rtol=C.options.quadrature_tol.rel, atol=C.options.quadrature_tol.abs,
+      rtol=C.options.cubature_tol.rel, atol=C.options.cubature_tol.abs,
       maxevals=C.options.cubature_maxevals))
   end
 
@@ -255,7 +255,7 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
     concertinasinpi = ConcertinaSinpi(principalintegrand, (-az, az))
     output = first(HCubature.hcubature(concertinasinpi,
       (sqrt(eps()), S.F.lower), (1.0 - sqrt(eps()), S.F.upper), initdiv=16,
-      rtol=C.options.quadrature_tol.rel, atol=C.options.quadrature_tol.abs,
+      rtol=C.options.cubature_tol.rel, atol=C.options.cubature_tol.abs,
       maxevals=C.options.cubature_maxevals))
     @assert !any(isnan, output)
     return output
@@ -280,9 +280,9 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
 
   function perpendicularintegral(∫dv⊥::T, nrm=1) where T
     return first(QuadGK.quadgk(∫dv⊥, S.F.lower, S.F.upper, order=7,
-      atol=max(C.options.quadrature_tol.abs,
-               C.options.quadrature_tol.rel * nrm / 2),
-      rtol=C.options.quadrature_tol.rel))
+      atol=max(C.options.cubature_tol.abs,
+               C.options.cubature_tol.rel * nrm / 2),
+      rtol=C.options.cubature_tol.rel))
   end
 
   # if logic here is a confusing!
