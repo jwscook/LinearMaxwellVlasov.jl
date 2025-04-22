@@ -20,6 +20,17 @@ using Test
     tol = Tolerance(rtol=0.0, atol=1.0)
     o = Options(tols=tol)
     @test tol == o.quadrature_tol
+    @test tol == o.cubature_tol
     @test tol == o.summation_tol
   end
+
+  @testset "cubature_maxevals" begin
+    o = Options(cuba_evals=101)
+    @test o.cubature_maxevals == 101
+    o = Options(maxevals=102)
+    @test o.cubature_maxevals == 102
+    o = Options(cubature_maxevals=103)
+    @test o.cubature_maxevals == 103
+  end
+
 end

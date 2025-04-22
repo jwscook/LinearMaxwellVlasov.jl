@@ -197,7 +197,8 @@ function relativisticmomentum(S::CoupledRelativisticSpecies, C::Configuration)
     return first(HCubature.hcubature(
       UnitSemicircleIntegrandTransform(integrand, norm(S.F.normalisation)),
       (0, -π/2), (1, π/2), initdiv=16,
-      rtol=C.options.quadrature_tol.rel, atol=C.options.quadrature_tol.abs))
+      rtol=C.options.quadrature_tol.rel, atol=C.options.quadrature_tol.abs,
+      maxevals=C.options.cubature_maxevals))
   end
 
   outertol = C.options.quadrature_tol.rel
@@ -216,7 +217,8 @@ function relativisticmomentum(S::CoupledRelativisticSpecies, C::Configuration)
       objective = transformaboutroots(integrandpz, real(pole(pzroots[1])/pchar))
 
       polefix = wavedirectionalityhandler(pzroots[1])
-      principal = polefix.(first(QuadGK.quadgk(objective, -bound, bound)))
+      principal = polefix.(first(QuadGK.quadgk(objective, -bound, bound, order=7,
+        atol=C.options.quadrature_tol.abs, rtol=C.options.quadrature_tol.rel)))
       principal = sign(real(kz)) .* real(principal) .+ im .* imag(principal)
 
       @assert !any(isnan, principal)# "principal = $principal"
