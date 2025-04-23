@@ -240,7 +240,7 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
 
   function integral2D()
     return first(HCubature.hcubature(integrand,
-      (-S.F.upper, eps()), (S.F.upper, S.F.upper), initdiv=16,
+      (-S.F.upper, lower), (S.F.upper, S.F.upper), initdiv=16,
       rtol=C.options.cubature_tol.rel, atol=C.options.cubature_tol.abs,
       maxevals=C.options.cubature_maxevals))
   end
