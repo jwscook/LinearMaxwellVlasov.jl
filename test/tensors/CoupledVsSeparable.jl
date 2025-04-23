@@ -46,7 +46,8 @@ Random.seed!(0)
         config = Configuration(F, K)
         config.options = Options(quadrature_rtol=1.0e-15, summation_rtol=4eps())
         outputS = LMV.contribution(separable, config)
-        config.options = Options(quadrature_rtol=1.0e-6, summation_rtol=1e-7)
+        config.options = Options(quadrature_rtol=1.0e-6, cubature_rtol=1.0e-6,
+                                 summation_rtol=1e-7)
         outputC = LMV.contribution(coupled, config)
 
         @test separable(0.0, 0.0) ≈ coupled(0.0, 0.0)
