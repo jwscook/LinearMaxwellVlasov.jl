@@ -182,9 +182,7 @@ function transformaboutroots(f::T, a::Real, b::Real) where {T}
   return output
 end
 
-function parallelperpfrompolar(rθ)
-  return (rθ[1] * sin(rθ[2]), rθ[1] * cos(rθ[2]))
-end
+parallelperpfrompolar(rθ) = rθ[1] .* sincos(rθ[2])
 function polarfromparallelperp(vz⊥)
   return (norm(vz⊥), atan(vz⊥[1], vz⊥[2]))
 end
