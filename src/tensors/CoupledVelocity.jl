@@ -236,14 +236,20 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
 
   integrand = NewbergerClassical(S, ω, Ω, kz, k⊥)
 
-  lower = max(S.F.lower, eps())
-
   function integral2D()
-    return first(HCubature.hcubature(integrand,
-      (-S.F.upper, lower), (S.F.upper, S.F.upper), initdiv=16,
-      rtol=C.options.cubature_tol.rel, atol=C.options.cubature_tol.abs,
-      maxevals=C.options.cubature_maxevals))
-  end
+    if S.F.lower == 0
+      return first(HCubature.hcubature(integrand,
+        (-S.F.upper, 0.0), (S.F.upper, S.F.upper), initdiv=64,
+        rtol=C.options.cubature_tol.rel, atol=C.options.cubature_tol.abs,
+        maxevals=C.options.cubature_maxevals))
+     else
+       ∫dvrdθ(vrθ) = vrθ[1] * integrand(parallelperpfrompolar(vrθ))
+       return first(HCubature.hcubature(∫dvrdθ,
+         (S.F.lower, -π / 2), (S.F.upper, π / 2), initdiv=32,
+         rtol=C.options.cubature_tol.rel, atol=C.options.cubature_tol.abs,
+         maxevals=C.options.cubature_maxevals))
+     end
+   end
 
   function principal()
     @assert !iszero(kz)
@@ -280,9 +286,9 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
 
   function perpendicularintegral(∫dv⊥::T, nrm=1) where T
     return first(QuadGK.quadgk(∫dv⊥, S.F.lower, S.F.upper, order=7,
-      atol=max(C.options.cubature_tol.abs,
-               C.options.cubature_tol.rel * nrm / 2),
-      rtol=C.options.cubature_tol.rel))
+      atol=max(C.options.quadrature_tol.abs,
+               C.options.quadrature_tol.rel * nrm / 2),
+      rtol=C.options.quadrature_tol.rel))
   end
 
   # if logic here is a confusing!

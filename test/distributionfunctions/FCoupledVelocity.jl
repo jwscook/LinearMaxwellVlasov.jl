@@ -63,7 +63,7 @@ end
         return f(x)
       end
       a = HCubature.hcubature(fclosed, [-L, 0], [L, L],
-                              rtol=1.0e-5, initdiv=3)[1]
+                              rtol=1.0e-10, initdiv=8)[1]
       g(vrθ) = vrθ[1] * LMV.transformtopolar(f)(vrθ)
       gcounter = 0
       function gclosed(x)
@@ -71,12 +71,12 @@ end
         return g(x)
       end
       b = HCubature.hcubature(gclosed, [0, -π/2], [L, π/2],
-                              rtol=1.0e-5, initdiv=3)[1]
+                              rtol=1.0e-10, initdiv=8)[1]
       h(vrθ) = vrθ[1] * f(LMV.parallelperpfrompolar(vrθ))
       c = HCubature.hcubature(h, [0, -π/2], [L, π/2],
-                              rtol=1.0e-5, initdiv=3)[1]
-      @test a ≈ b rtol=1.0e-3
-      @test b ≈ c rtol=1.0e-3
+                              rtol=1.0e-10, initdiv=8)[1]
+      @test a ≈ b rtol=1.0e-4
+      @test b ≈ c rtol=1.0e-8
       cartesiancounter += fcounter
       polarcounter += gcounter
     end
