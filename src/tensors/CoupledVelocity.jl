@@ -3,6 +3,9 @@ using StaticArrays, SpecialFunctions
 
 (igrand::AbstractCoupledIntegrand)(vzv⊥) = igrand(vzv⊥[1], vzv⊥[2])
 
+#=
+# deprecated
+
 struct HarmonicSum{S,T,U,V,W} <: AbstractCoupledIntegrand
   species::S
   ω::T
@@ -55,9 +58,6 @@ function numerator(harmonicsum::HarmonicSum, vz⊥)
 
   return output
 end
-
-#=
-# deprecated
 
 function denominator(h::HarmonicSum, vz)
   output = h.ω - h.n * h.Ω - vz * h.kz
@@ -263,7 +263,7 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
       (sqrt(eps()), S.F.lower), (1.0 - sqrt(eps()), S.F.upper), initdiv=16,
       rtol=C.options.cubature_tol.rel, atol=C.options.cubature_tol.abs,
       maxevals=C.options.cubature_maxevals))
-    @assert !any(isnan, output)
+    @assert all(!isnan, output)
     return output
   end
 

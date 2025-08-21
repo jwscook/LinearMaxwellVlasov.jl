@@ -138,12 +138,16 @@ function residuepartadaptive(f::T, pole::Number,
   outer(x) = inner(2π * x) * cispi(-2x)
   value = mapreduce(outer, +, bitreverser(0, N-1)) / N * radius
   delta = mapreduce(outer, +, bitreverser(N, 2N-1)) / 2N * radius
+  @assert !any(isnan, value) "Initial value in residuepartadaptive must not contain NaNs"
+  @assert !any(isnan, delta) "Initial delta in residuepartadaptive must not contain NaNs"
   while !isapprox(value, value / 2 + delta, rtol=tol.rel, atol=tol.abs, nans=true)
     value = value / 2 + delta
     N >= 2^20 && break # far far far far too many iterations # TODO maybe throw?
     N *= 2
     delta = mapreduce(outer, +, bitreverser(N, 2N-1)) / 2N * radius
   end
+  @assert !any(isnan, value) "Final value in residuepartadaptive must not contain NaNs"
+  @assert !any(isnan, delta) "Final delta in residuepartadaptive must not contain NaNs"
   return all(isfinite, delta) ? value / 2 + delta : value
 end
 
