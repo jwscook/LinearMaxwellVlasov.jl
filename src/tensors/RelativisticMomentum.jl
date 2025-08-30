@@ -6,7 +6,9 @@ struct NewbergerRelativistic{S,T,U,V} <: ARS
   ω::T
   kz::U
   k⊥::V
+  count::Ref{Int}
 end
+NewbergerRelativistic(s, ω, kz, k⊥) = NewbergerRelativistic(s, ω, kz, k⊥, Ref(0))
 
 fγ(ars::ARS, pz⊥) = sqrt(1 + sum(x->x^2, pz⊥) / (ars.species.m * c₀)^2)
 function fa(ars::ARS, pz⊥)
@@ -14,6 +16,7 @@ function fa(ars::ARS, pz⊥)
 end
 
 function (nr::NewbergerRelativistic)(pz⊥)
+  nr.count[] += 1
   pz, p⊥ = pz⊥
   ω = nr.ω
   Ω = nr.species.Ω
@@ -193,12 +196,18 @@ function relativisticmomentum(S::CoupledRelativisticSpecies, C::Configuration)
 
   bound = 1 - 1e8 * eps()
 
+  cubaatol = C.options.cubature_tol.abs
+  cubartol = C.options.cubature_tol.rel
+
   function integral2D()
-    return first(HCubature.hcubature(
+    integrand.count[] = 0
+    output, errorestimate = HCubature.hcubature(
       UnitSemicircleIntegrandTransform(integrand, norm(S.F.normalisation)),
       (0, -π/2), (1, π/2), initdiv=16,
-      rtol=C.options.quadrature_tol.rel, atol=C.options.quadrature_tol.abs,
-      maxevals=C.options.cubature_maxevals))
+      rtol=cubartol, atol=cubaatol, maxevals=C.options.cubature_maxevals)
+    @assert (integrand.count[] < C.options.cubature_maxevals) ||
+      errorestimate < max(cubartol * norm(output), cubaatol)
+    return output
   end
 
   outertol = C.options.quadrature_tol.rel
@@ -235,7 +244,7 @@ function relativisticmomentum(S::CoupledRelativisticSpecies, C::Configuration)
         polefix = wavedirectionalityhandler(pole)
         rpradius = abs(pole) * sqrt(eps())
         rp = residuepartadaptive(integrandpz, pole, rpradius, 64,
-          C.options.summation_tol)
+          C.options.summation_tol, C.options.residue_maxevals)
         output1 = polefix.(residue(rp, polefix(pole)))
         output1 = sign(real(kz)) .* real(output1) .+ im .* imag(output1)
         return output1
