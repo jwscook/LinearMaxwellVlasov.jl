@@ -126,14 +126,14 @@ each loop until the tolerance has been met.
 - `radius::Real=(isreal(pole) ? abs(pole) : imag(pole)) * sqrt(eps())`: radius of the residue
 - `N::Int=64`: the number of points to evaluate the residue initially
 - `tol::Tolerance=Tolerance()`: Tolerance object
+- `maxevals::Integer=typemax(Int)`: Maximum number of sampling points
 ...
 
 """
-function residuepartadaptive(f::T, pole::Number,
-    radius::Real=(isreal(pole) ? abs(pole) : imag(pole)) * sqrt(eps()),
-    N::Int=64, tol::Tolerance=Tolerance()) where {T}
+function residuepartadaptive(f::T, pole::Number, radius::Real=abs(pole) * sqrt(eps()),
+    N::Int=64, tol::Tolerance=Tolerance(), maxevals::Integer=typemax(Int)) where {T}
   @assert ispow2(N) "N must be a power of 2 but it is $N"
-  bitreverser(a, b) = ((bitreverse(i) + 2.0^63) / 2.0^64 for i in a:b)
+  bitreverser(a, b) = ((bitreverse(i) + 2.0^63) * 2.0^-64 for i in a:b)
   inner(θ) = f(radius * Complex(cos(θ), -sin(θ)) + pole)
   outer(x) = inner(2π * x) * cispi(-2x)
   value = mapreduce(outer, +, bitreverser(0, N-1)) / N * radius
@@ -142,8 +142,9 @@ function residuepartadaptive(f::T, pole::Number,
   @assert !any(isnan, delta) "Initial delta in residuepartadaptive must not contain NaNs"
   while !isapprox(value, value / 2 + delta, rtol=tol.rel, atol=tol.abs, nans=true)
     value = value / 2 + delta
-    N >= 2^20 && break # far far far far too many iterations # TODO maybe throw?
     N *= 2
+    # stop early and error out rather than give an underaccurate result
+    @assert N <= maxevals "Number of samples for adaptive residue exceeds limit"
     delta = mapreduce(outer, +, bitreverser(N, 2N-1)) / 2N * radius
   end
   @assert !any(isnan, value) "Final value in residuepartadaptive must not contain NaNs"

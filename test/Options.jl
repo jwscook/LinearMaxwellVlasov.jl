@@ -25,12 +25,17 @@ using Test
   end
 
   @testset "cubature_maxevals" begin
-    o = Options(cuba_evals=101)
+    o = Options(cubature_maxevals=101)
     @test o.cubature_maxevals == 101
-    o = Options(maxevals=102)
+    o = Options(cuba_evals=102)
     @test o.cubature_maxevals == 102
-    o = Options(cubature_maxevals=103)
-    @test o.cubature_maxevals == 103
+  end
+
+  @testset "residue_maxevals" begin
+    o = Options(residue_maxevals=101)
+    @test o.residue_maxevals == 101
+    o = Options(res_evals=102)
+    @test o.residue_maxevals == 102
   end
 
 end

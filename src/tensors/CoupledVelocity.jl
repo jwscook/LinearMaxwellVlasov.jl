@@ -116,7 +116,7 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies,
     ∫dvz(x) = integrand((x, v⊥))
     rpradius = (iszero(imag(pole)) ? abs(pole) : abs(imag(pole))) * sqrt(eps())
     rp = residuepartadaptive(∫dvz, pole, rpradius, 64,
-      C.options.summation_tol)
+      C.options.summation_tol, C.options.residue_maxevals)
     output = polefix.(residue(rp, polefix(pole)))
     output = sign(real(kz)) .* real(output) .+ im .* imag(output)
     @assert !any(isnan, output)# "v⊥ = $v⊥, rp = $rp, pole = $pole"
@@ -146,19 +146,20 @@ end
 =#
 
 
-struct NewbergerClassical{S,T,U,V,W} <: AbstractCoupledIntegrand
+struct NewbergerClassical{S,T,U,V} <: AbstractCoupledIntegrand
   species::S
   ω::T
-  Ω::U
-  kz::V
-  k⊥::W
+  kz::U
+  k⊥::V
+  count::Ref{Int}
 end
+NewbergerClassical(s, ω, kz, k⊥) = NewbergerClassical(s, ω, kz, k⊥, Ref(0))
 function (nc::NewbergerClassical)(vz, v⊥)
   return numerator(nc, vz, v⊥) / denominator(nc, vz, v⊥)
 end
 function pseudoharmonic(nc::NewbergerClassical, vz)
   ω = nc.ω
-  Ω = nc.Ω
+  Ω = nc.species.Ω
   kz = nc.kz
   a = (ω - kz * vz) / Ω
   return a
@@ -170,9 +171,10 @@ function denominator(nc::NewbergerClassical, vz, v⊥)
   return sinπa
 end
 function numerator(nc::NewbergerClassical, vz, v⊥)
+  nc.count[] += 1
   S = nc.species
   ω = nc.ω
-  Ω = nc.Ω
+  Ω = S.Ω
   kz = nc.kz
   k⊥ = nc.k⊥
   dfdvz = DualNumbers.dualpart(S(Dual(vz, 1), v⊥))
@@ -234,35 +236,40 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
   kz, k⊥ = para(C.wavenumber), perp(C.wavenumber)
   @assert !iszero(k⊥) "Perpendicular wavenumber must not be zero"
 
-  integrand = NewbergerClassical(S, ω, Ω, kz, k⊥)
+  integrand = NewbergerClassical(S, ω, kz, k⊥)
+  cubaatol = C.options.cubature_tol.abs
+  cubartol = C.options.cubature_tol.rel
 
   function integral2D()
-    if S.F.lower == 0
-      return first(HCubature.hcubature(integrand,
-        (-S.F.upper, 0.0), (S.F.upper, S.F.upper), initdiv=64,
-        rtol=C.options.cubature_tol.rel, atol=C.options.cubature_tol.abs,
-        maxevals=C.options.cubature_maxevals))
-     else
-       ∫dvrdθ(vrθ) = vrθ[1] * integrand(parallelperpfrompolar(vrθ))
-       return first(HCubature.hcubature(∫dvrdθ,
-         (S.F.lower, -π / 2), (S.F.upper, π / 2), initdiv=32,
-         rtol=C.options.cubature_tol.rel, atol=C.options.cubature_tol.abs,
-         maxevals=C.options.cubature_maxevals))
-     end
-   end
+    integrand.count[] = 0
+    output, integral2Derrorestimate = if S.F.lower == 0
+     HCubature.hcubature(integrand,
+       (-S.F.upper, 0.0), (S.F.upper, S.F.upper), initdiv=64,
+       rtol=cubartol, atol=cubaatol, maxevals=C.options.cubature_maxevals)
+    else
+      ∫dvrdθ(vrθ) = vrθ[1] * integrand(parallelperpfrompolar(vrθ))
+      HCubature.hcubature(∫dvrdθ,
+        (S.F.lower, -π / 2), (S.F.upper, π / 2), initdiv=32,
+        rtol=cubartol, atol=cubaatol, maxevals=C.options.cubature_maxevals)
+    end
+    @assert (integrand.count[] < C.options.cubature_maxevals) ||
+      integral2Derrorestimate < max(cubartol * norm(output), cubaatol)
+    return output
+  end
 
   function principal()
     @assert !iszero(kz)
     @assert iszero(imag(kz)) && iszero(imag(ω))
     az = ceil(Int, abs(S.F.upper * kz / Ω)) + 1
-    nc = NewbergerClassical(S, ω, Ω, kz, k⊥)
+    nc = NewbergerClassical(S, ω, kz, k⊥)
     principalintegrand(t, v⊥) = numerator(nc, (ω - t * Ω) / kz, v⊥) * abs(Ω / kz)
     principalintegrand(tv⊥) = principalintegrand(tv⊥...)
     concertinasinpi = ConcertinaSinpi(principalintegrand, (-az, az))
-    output = first(HCubature.hcubature(concertinasinpi,
+    output, principalerrorestimate = HCubature.hcubature(concertinasinpi,
       (sqrt(eps()), S.F.lower), (1.0 - sqrt(eps()), S.F.upper), initdiv=16,
-      rtol=C.options.cubature_tol.rel, atol=C.options.cubature_tol.abs,
-      maxevals=C.options.cubature_maxevals))
+      rtol=cubartol, atol=cubaatol, maxevals=C.options.cubature_maxevals)
+    @assert (nc.count[] < C.options.cubature_maxevals) ||
+      principalerrorestimate < max(cubartol * norm(output), cubaatol)
     @assert all(!isnan, output)
     return output
   end
@@ -273,9 +280,9 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
       pole = Pole(C.frequency, C.wavenumber, n, S.Ω)
       polefix = wavedirectionalityhandler(pole)
       residuesigma(polefix(pole)) == 0 && return zero(T0)
-      rpradius = (iszero(imag(pole)) ? abs(pole) : abs(imag(pole))) * sqrt(eps())
+      rpradius = abs(Ω) * sqrt(eps())
       output = residuepartadaptive(vz->integrand((vz, v⊥)),
-        pole, rpradius, 8, C.options.quadrature_tol)
+        pole, rpradius, 8, C.options.quadrature_tol, C.options.residue_maxevals)
       output = polefix.(residue(output, polefix(pole)))
       output = sign(real(kz)) .* real(output) .+ im .* imag(output)
       @assert !any(isnan, output)# "v⊥ = $v⊥, pp = $pp, pole = $pole"
