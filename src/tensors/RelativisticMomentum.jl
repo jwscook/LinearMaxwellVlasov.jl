@@ -1,3 +1,5 @@
+using GeneralBesselj
+
 abstract type AbstractRelativisticStruct end
 const ARS = AbstractRelativisticStruct 
 
@@ -29,8 +31,7 @@ function (nr::NewbergerRelativistic)(pz⊥)
 
   γ = fγ(nr, pz⊥)
   a = fa(nr, pz⊥)
-  πa = π * a
-  sinπa = sin(πa)
+  sinπa = sin(π * a)
   π_sinπa = π / sinπa
   πa_sinπa = π_sinπa * a
   γξ⊥ = p⊥ * k⊥ / m / Ω
@@ -44,19 +45,18 @@ function (nr::NewbergerRelativistic)(pz⊥)
   end
   @assert !isinteger(a) (a, πa_sinπa, pz)
 
-  Ja = besselj(a, γξ⊥)
-  J_a = besselj(-a, γξ⊥)
+  Ja, J_a, Jad, J_ad = if real(a) > 0
+    Ja, J_a, Ja_1, J_a1 = besselj_v([a, -a, a - 1, -a + 1], γξ⊥)
+    (Ja, J_a, Ja_1 - Ja * a / γξ⊥, -J_a * a / γξ⊥ - J_a1)
+  else
+    Ja, J_a, Ja1, J_a_1 = besselj_v([a, -a, a + 1, -a - 1], γξ⊥)
+    (Ja, J_a, Ja * a / γξ⊥ - Ja1, J_a_1 + J_a * a / γξ⊥)
+  end
+
   @assert isfinite(Ja) Ja
   @assert isfinite(J_a) J_a
-  Jad, J_ad = if real(a) >= 0
-    Ja_1 = besselj(a - 1, γξ⊥)
-    J_a1 = besselj(-a + 1, γξ⊥)
-    (Ja_1 - Ja * a / γξ⊥, -J_a * a / γξ⊥ - J_a1)
-  else
-    Ja1 = besselj(a + 1, γξ⊥)
-    J_a_1 = besselj(-a - 1, γξ⊥)
-    Ja * a / γξ⊥ - Ja1, J_a_1 + J_a * a / γξ⊥
-  end
+  @assert isfinite(Jad) Jad
+  @assert isfinite(J_ad) J_ad
 
   θF = p⊥ * dfdpz - pz * dfdp⊥
 
@@ -203,10 +203,12 @@ function relativisticmomentum(S::CoupledRelativisticSpecies, C::Configuration)
     integrand.count[] = 0
     output, errorestimate = HCubature.hcubature(
       UnitSemicircleIntegrandTransform(integrand, norm(S.F.normalisation)),
-      (0, -π/2), (1, π/2), initdiv=16,
+      (0, -π/2), (1, π/2), initdiv=2,
       rtol=cubartol, atol=cubaatol, maxevals=C.options.cubature_maxevals)
-    @assert (integrand.count[] < C.options.cubature_maxevals) ||
-      errorestimate < max(cubartol * norm(output), cubaatol)
+    if C.options.erroruponcubaturenonconformance
+      @assert (integrand.count[] < C.options.cubature_maxevals) ||
+        errorestimate < max(cubartol * norm(output), cubaatol)
+    end
     return output
   end
 

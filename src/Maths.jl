@@ -7,12 +7,6 @@ derivative(f::T, x::Number) where {T} = DualNumbers.dualpart(f(Dual(x, 1)))
 import Base.^
 ^(x::DualNumbers.Dual, p::Complex) = exp((log(abs2(x))/2 + im * angle(x)) * p)
 
-import SpecialFunctions.besselj
-function besselj(n::Integer, x::DualNumbers.Dual)
-  r, d = realpart(x), dualpart(x)
-  return Dual(besselj(n, r), d * (besselj(n - 1, r) - besselj(n + 1, r)) / 2)
-end
-
 function isapproxinteger(z::Complex, tol=eps())
   rz, iz = reim(z)
   a = round(Int, rz)
@@ -20,18 +14,6 @@ function isapproxinteger(z::Complex, tol=eps())
   isapprox(0, iz, rtol=tol, atol=tol) || return false
   return true
 end
-function besselj(a::T, z) where {T<:Complex}
-  #exp(a * log(z/2)) is faster and more accurate than (z/2)^a
-  if !(T <: Dual) && (isinteger(a) || isapproxinteger(a, eps()))
-    return promote_type(T, typeof(z))(besselj(round(Int, real(a)), z))
-  else
-    factor(z::Dual, a) = (z / 2)^a / gamma(a + 1) # Can't do Complex(Dual)
-    factor(z, a) = exp(a * log(Complex(z) / 2) - loggamma(a + 1))
-    return factor(z, a) * HypergeometricFunctions.pFq(
-      (@SArray T[]), (@SArray [a + 1]), -z^2 / 4)
-  end
-end
-
 
 import SpecialFunctions.besselix
 function besselix(n::Integer, x::DualNumbers.Dual{T}) where T

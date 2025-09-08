@@ -7,18 +7,22 @@ struct Options{T<:Number}
   memoiseperpendicular::Bool
   cubature_maxevals::Int
   residue_maxevals::Int
+  erroruponcubaturenonconformance::Bool
   _uniqueid::UInt64
   function Options(quadrature_tol::Tolerance{T},
       cubature_tol::Tolerance{T},
       summation_tol::Tolerance{T},
       memoiseparallel::Bool, memoiseperpendicular::Bool,
-      cubature_maxevals::Int, residue_maxevals::Int) where {T<:Number}
+      cubature_maxevals::Int, residue_maxevals::Int,
+      erroruponcubaturenonconformance::Bool) where {T<:Number}
     _uniqueid = hash((quadrature_tol, cubature_tol, summation_tol,
-      memoiseparallel, memoiseperpendicular, cubature_maxevals, residue_maxevals),
+      memoiseparallel, memoiseperpendicular, cubature_maxevals, residue_maxevals,
+      erroruponcubaturenonconformance),
       hash(:Options))
     return new{T}(quadrature_tol, cubature_tol, summation_tol,
       memoiseparallel, memoiseperpendicular,
-      cubature_maxevals, residue_maxevals, _uniqueid)
+      cubature_maxevals, residue_maxevals,
+      erroruponcubaturenonconformance, _uniqueid)
   end
 end
 uniqueid(o::Options) = o._uniqueid
@@ -46,6 +50,7 @@ function defaults(::Type{T}=Float64) where {T}
   output[:memoiseperpendicular] = true
   output[:cubature_maxevals] = typemax(Int)
   output[:residue_maxevals] = typemax(Int)
+  output[:erroruponcubaturenonconformance] = true
   return output
 end
 
@@ -77,6 +82,7 @@ function Options(::Type{T}=Float64; kwargstuple...) where {T}
     :rtols => (:quadrature_rtol, :summation_rtol, :cubature_rtol),
     :cuba_evals => :cubature_maxevals,
     :res_evals => :residue_maxevals,
+    :error_cuba => :erroruponcubaturenonconformance,
    )
 
   for (kwargkey, argkeys) ∈ specialcasekeys
@@ -96,5 +102,6 @@ function Options(::Type{T}=Float64; kwargstuple...) where {T}
   summation_tol = Tolerance{T}(args[:summation_rtol], args[:summation_atol])
   return Options(quadrature_tol, cubature_tol, summation_tol,
     args[:memoiseparallel], args[:memoiseperpendicular],
-    args[:cubature_maxevals], args[:residue_maxevals])
+    args[:cubature_maxevals], args[:residue_maxevals],
+    args[:erroruponcubaturenonconformance])
 end
