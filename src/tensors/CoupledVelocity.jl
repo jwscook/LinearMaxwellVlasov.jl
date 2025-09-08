@@ -269,21 +269,6 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
     return output
   end
 
-#  function coupledresidue(v⊥, ::Type{T0})::T0 where T0
-#    # this started life in relativistic version - can it be simplified?
-#    function allresidues(n)
-#      pole = Pole(C.frequency, C.wavenumber, n, S.Ω)
-#      polefix = wavedirectionalityhandler(pole)
-#      residuesigma(polefix(pole)) == 0 && return zero(T0)
-#      output = numerator(integrand, pole.pole, v⊥) * (-1)^n
-#      output = polefix.(residue(output, polefix(pole)))
-#      output = sign(real(kz)) .* real(output) .+ im .* imag(output)
-#      @assert !any(isnan, output)# "v⊥ = $v⊥, pp = $pp, pole = $pole"
-#      return output
-#    end
-#    return -Ω / kz * converge(allresidues, C.options.summation_tol) / π
-#  end
-
   function coupledresidue(v⊥, ::Type{T0})::T0 where T0
     # this started life in relativistic version - can it be simplified?
     function allresidues(n)
