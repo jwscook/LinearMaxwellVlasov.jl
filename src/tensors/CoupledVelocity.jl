@@ -275,7 +275,7 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
       pole = Pole(C.frequency, C.wavenumber, n, S.Ω)
       polefix = wavedirectionalityhandler(pole)
       residuesigma(polefix(pole)) == 0 && return zero(T0)
-      rpradius = abs(S.F.upper) * 1e-4
+      rpradius = (iszero(imag(pole)) ? abs(pole) : abs(imag(pole))) * sqrt(eps())
       output = residuepartadaptive(vz->integrand((vz, v⊥)),
         pole, rpradius, 8, C.options.quadrature_tol, C.options.residue_maxevals)
       output = polefix.(residue(output, polefix(pole)))
