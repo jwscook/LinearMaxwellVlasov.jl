@@ -240,9 +240,19 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
 
   function integral2D()
     integrand.count[] = 0
-    output, integral2Derrorestimate = HCubature.hcubature(integrand,
-        (-S.F.upper, 0.0), (S.F.upper, S.F.upper); initdiv=2,
+
+    output, integral2Derrorestimate = if S.F.lower == 0
+      HCubature.hcubature(integrand,
+        (-S.F.upper, 0.0), (S.F.upper, S.F.upper), initdiv=4,
         rtol=cubartol, atol=cubaatol, maxevals=C.options.cubature_maxevals)
+    else
+      @assert S.F.lower > 0
+      ∫dvrdθ(vrθ) = vrθ[1] * integrand(parallelperpfrompolar(vrθ))
+      HCubature.hcubature(∫dvrdθ,
+        (S.F.lower, -π / 2), (S.F.upper, π / 2), initdiv=2,
+        rtol=cubartol, atol=cubaatol, maxevals=C.options.cubature_maxevals)
+    end
+
     if C.options.erroruponcubaturenonconformance
       @assert (integrand.count[] < C.options.cubature_maxevals) ||
         integral2Derrorestimate < max(cubartol * norm(output), cubaatol)
