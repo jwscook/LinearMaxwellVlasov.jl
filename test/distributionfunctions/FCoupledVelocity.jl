@@ -53,7 +53,7 @@ end
     vcrit = rand()
     vcutoffwidth = rand()
     Lsd = (vbeam + vcutoffwidth * 6)
-    slowingdown =FSlowingDown(vbeam, vcrit, vcutoffwidth)
+    slowingdown = FSlowingDown(vbeam, vcrit, vcutoffwidth)
     for (S, L) in ((shell, Lshell), (slowingdown, Lsd))
       n, l = rand(-4:4), rand(-4:4)
       f(x) = 2π * x[2] * x[1]^2 * besselj(n, x[2]) * besselj(l, x[2]) * S(x)
@@ -83,5 +83,47 @@ end
   end
   @test polarcounter < cartesiancounter
 end
+
+@testset "integrals in polar coords with a non-zero lower limit" begin
+  cartesiancounter = 0
+  polarcounter = 0
+  for i ∈ 1:10
+    vshell = 2 * rand()
+    vth = vshell / 100
+    shell = FShell(vth, vshell)
+    lower = vshell - 6vth
+    upper = vshell + 6vth
+    @assert lower > vth
+    fcvn = FCoupledVelocityNumerical(shell.F, (vshell, vshell),
+      lower, upper; autonormalise=true)
+    ftest(x) = 2π * x[2] * fcvn(x)
+
+    fcounter = 0
+    function fclosed(x)
+      fcounter += 1
+      return ftest(x)
+    end
+    a = HCubature.hcubature(fclosed, [-upper, 0], [upper, upper],
+                            rtol=1.0e-10, initdiv=8)[1]
+    g(vrθ) = vrθ[1] * ftest(LMV.parallelperpfrompolar(vrθ))
+    gcounter = 0
+    function gclosed(x)
+      gcounter += 1
+      return g(x)
+    end
+    b = HCubature.hcubature(gclosed, [lower, -π/2], [upper, π/2],
+                            rtol=1.0e-10, initdiv=8)[1]
+    h(vrθ) = vrθ[1] * ftest(LMV.parallelperpfrompolar(vrθ))
+    c = HCubature.hcubature(h, [0, -π/2], [upper, π/2],
+                            rtol=1.0e-10, initdiv=8)[1]
+    @test a ≈ b rtol=1.0e-8
+    @test b ≈ c rtol=1.0e-8
+    cartesiancounter += fcounter
+    polarcounter += gcounter
+  end
+  @test polarcounter < cartesiancounter
+  @show polarcounter, cartesiancounter
+end
+
 
 end
