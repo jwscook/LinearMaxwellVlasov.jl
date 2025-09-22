@@ -12,6 +12,7 @@ using Test
   include("integrals/Parallel_unittest1.jl")
   include("integrals/Parallel_unittest2.jl")
   include("integrals/Parallel_unittest3.jl")
+  include("integrals/Parallel_unittest4.jl")
   include("integrals/Perpendicular.jl")
   include("integrals/PerpendicularKeyAndFactor.jl")
   include("integrals/Perpendicular_maxwellian.jl")

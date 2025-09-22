@@ -241,21 +241,21 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
   function integral2D()
     integrand.count[] = 0
 
-    output, integral2Derrorestimate = if S.F.lower == 0
+    t1 = @elapsed output, integral2Derrorestimate = if S.F.lower == 0
       HCubature.hcubature(integrand,
-        (-S.F.upper, 0.0), (S.F.upper, S.F.upper), initdiv=4,
+        (-S.F.upper, 0.0), (S.F.upper, S.F.upper), initdiv=16,
         rtol=cubartol, atol=cubaatol, maxevals=C.options.cubature_maxevals)
     else
       @assert S.F.lower > 0
       ∫dvrdθ(vrθ) = vrθ[1] * integrand(parallelperpfrompolar(vrθ))
       HCubature.hcubature(∫dvrdθ,
-        (S.F.lower, -π / 2), (S.F.upper, π / 2), initdiv=2,
+        (S.F.lower, -π / 2), (S.F.upper, π / 2), initdiv=16,
         rtol=cubartol, atol=cubaatol, maxevals=C.options.cubature_maxevals)
     end
 
     if C.options.erroruponcubaturenonconformance
-      @assert (integrand.count[] < C.options.cubature_maxevals) ||
-        integral2Derrorestimate < max(cubartol * norm(output), cubaatol)
+      @assert ((integrand.count[] < C.options.cubature_maxevals) ||
+        integral2Derrorestimate < max(cubartol * norm(output), cubaatol)) "error / val = $(integral2Derrorestimate / norm(output)), count = $(integrand.count[]), time=$t1"
     end
     return output
   end
@@ -263,13 +263,15 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
   function principal()
     @assert !iszero(kz)
     @assert iszero(imag(kz)) && iszero(imag(ω))
-    az = ceil(Int, abs(S.F.upper * kz / Ω)) + 1
+    @assert S.F.upper > 0 # obviously
+    maxa = ceil(Int, real((ω + S.F.upper * abs(kz)) / abs(Ω))) + 1
+    mina = -maxa
     nc = NewbergerClassical(S, ω, kz, k⊥)
     principalintegrand(t, v⊥) = numerator(nc, (ω - t * Ω) / kz, v⊥) * abs(Ω / kz)
     principalintegrand(tv⊥) = principalintegrand(tv⊥...)
-    concertinasinpi = ConcertinaSinpi(principalintegrand, (-az, az))
+    concertinasinpi = ConcertinaSinpi(principalintegrand, (mina, maxa))
     output, principalerrorestimate = HCubature.hcubature(concertinasinpi,
-      (sqrt(eps()), S.F.lower), (1.0 - sqrt(eps()), S.F.upper), initdiv=8,
+      (sqrt(eps()), S.F.lower), (1.0 - sqrt(eps()), S.F.upper), initdiv=32,
       rtol=cubartol, atol=cubaatol, maxevals=C.options.cubature_maxevals)
     if C.options.erroruponcubaturenonconformance
       @assert (nc.count[] < C.options.cubature_maxevals) ||
@@ -299,6 +301,55 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
                C.options.quadrature_tol.rel * nrm / 2),
       rtol=C.options.quadrature_tol.rel))
   end
+
+  function robustintegral2D()
+    integrand.count[] = 0
+    deformation = imagcontourdeformation(ω)
+    @show angle(ω), deformation, ω
+
+    t1 = @elapsed output, integral2Derrorestimate = #=if S.F.lower == 0=#
+      HCubature.hcubature(vz⊥ -> integrand((vz⊥[1] + im * deformation, vz⊥[2])),
+        (-S.F.upper, 0.0), (S.F.upper, S.F.upper), initdiv=16,
+        rtol=cubartol, atol=cubaatol, maxevals=C.options.cubature_maxevals)
+    #=else
+      @assert S.F.lower > 0
+      ∫dvrdθ(vrθ) = vrθ[1] * integrand(parallelperpfrompolar(vrθ) + (im * deformation, zero(vrθ[2])))
+      HCubature.hcubature(∫dvrdθ,
+        (S.F.lower, -π / 2), (S.F.upper, π / 2), initdiv=16,
+        rtol=cubartol, atol=cubaatol, maxevals=C.options.cubature_maxevals)
+    end=#
+
+    if C.options.erroruponcubaturenonconformance
+      @assert ((integrand.count[] < C.options.cubature_maxevals) ||
+        integral2Derrorestimate < max(cubartol * norm(output), cubaatol)) "error / val = $(integral2Derrorestimate / norm(output)), count = $(integrand.count[]), time=$t1"
+    end
+    return output, deformation
+  end
+
+  function robustcoupledresidue(v⊥, ::Type{T0}, deformation)::T0 where T0
+    function allresidues(n)
+      possiblysingularpole = Pole(C.frequency, C.wavenumber, n, S.Ω)
+      pole = Pole(possiblysingularpole.pole, possiblysingularpole.realkparallel, deformation)
+      laurentnumerator(x) = -(-1)^n * Ω * numerator(integrand, x, v⊥) / kz / π
+      output = residue(laurentnumerator, pole.pole, pole.realkparallel, deformation)
+      output = sign(real(kz)) .* real(output) .+ im .* imag(output)
+      @assert !any(isnan, output)# "v⊥ = $v⊥, pp = $pp, pole = $pole"
+      return output
+    end
+    return converge(allresidues, C.options.summation_tol)
+  end
+
+
+#  robustintegral, deformation = robustintegral2D()
+#  result = robustintegral
+#
+#  if !iszero(kz)
+#    res = perpendicularintegral(
+#      v⊥->robustcoupledresidue(v⊥, typeof(robustintegral), deformation),
+#      norm(robustintegral))
+#    result += res
+#  end
+#  return result
 
   t1 = t2 = t3 = t4 = 0.0
   # if logic here is a confusing!

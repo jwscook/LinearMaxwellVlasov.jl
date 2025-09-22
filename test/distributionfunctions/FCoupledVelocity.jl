@@ -122,7 +122,7 @@ end
     polarcounter += gcounter
   end
   @test polarcounter < cartesiancounter
-  @show polarcounter, cartesiancounter
+#  @show polarcounter, cartesiancounter
 end
 
 

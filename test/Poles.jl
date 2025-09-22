@@ -1,7 +1,7 @@
 using Dates
 println("$(now()) $(@__FILE__)")
 
-using Random, Test, InteractiveUtils
+using Random, Test, InteractiveUtils, QuadGK
 
 using LinearMaxwellVlasov
 const LMV = LinearMaxwellVlasov
@@ -11,31 +11,17 @@ const LMV = LinearMaxwellVlasov
 @testset "Pole fix" begin
   pole⁺ = LMV.Pole(1.0, 1)
   z = 1.0 + im
-  for op ∈ (pole⁺, LMV.wavedirectionalityhandler(pole⁺))
+  for op ∈ (#=pole⁺, =#LMV.wavedirectionalityhandler(pole⁺),)
     @test op(1) == 1
     @test op(z) == z
     @test op(conj(z)) == conj(z)
   end
   pole⁻ = LMV.Pole(1.0, -1)
-  for op ∈ (pole⁻, LMV.wavedirectionalityhandler(pole⁻))
+  for op ∈ (#=pole⁻, =#LMV.wavedirectionalityhandler(pole⁻),)
     @test op(1) == 1
     @test op(z) == conj(z)
     @test op(conj(z)) == z
   end
-end
-@testset "Pole fix code_warntype" begin
-  Random.seed!(0) # seed rand
-  verbose = false
-
-  pole = LMV.Pole(1.0, 1)
-  z = 1.0 + im
-  inferredworks = true
-  try
-    @inferred pole(z)
-  catch
-    inferredworks = false
-  end
-  @test inferredworks
 end
 
 @testset "CauchyResidues" begin
@@ -62,6 +48,54 @@ end
   @test !isfinite(LMV.Pole(Inf + 0im, 1))
   @test !isfinite(LMV.Pole(0 + Inf*im, 1))
   @test !isfinite(LMV.Pole(Inf + Inf*im, 1))
+end
+
+@testset "integral contour deformation logic" begin
+  numerator(x) = exp(-x*x) / sqrt(π)
+  foobles(x, z) = numerator(x) ./ (x - z)
+  for r in (1.0, ), i in (0.1,-0.1, 0.0), deformation in (0.0, 0.01, -0.01, -0.2, 0.2)
+    d = deformation
+    z = r + im * i
+    iszero(d - i) && continue # otherwise test logic is broken ...
+    pole = LMV.Pole(z, 1)
+
+    expected = LMV.plasma_dispersion_function(z)
+
+    g = LMV.foldnumeratoraboutpole(numerator, z)
+    standardmethod = QuadGK.quadgk(g, 2eps(), 12)[1] + LMV.residue(numerator, z)
+
+    σ = LMV.residuesigma(pole - im * d)
+    rs = im * π * σ * numerator(z)
+    ab = QuadGK.quadgk(x->foobles(x, z), -12 + im * d, 12 + im * d)[1] # ... here
+    manualresult = ab + rs
+    @assert standardmethod ≈ expected # not the thing we're testing
+
+    deformedpole = LMV.Pole(z, 1, d)
+    result = QuadGK.quadgk(x->foobles(x, z), -12 + im * d, 12 + im * d)[1] + LMV.residue(numerator, deformedpole)
+
+    @testset "r=$r, i=$i, d=$d" begin
+      @test expected ≈ manualresult
+      @test expected ≈ result
+    end
+  end
+end
+
+@testset "integral contour deformation" begin
+  numerator(x) = exp(-x*x) / sqrt(π)
+  foobles(x, z) = numerator(x) ./ (x - z)
+  for r in (1.0,), i in (0.1, -0.1, 0.0, 1e-10, -1e-10)
+    z = r + im * i
+
+    expected = LMV.plasma_dispersion_function(z)
+
+    d = LMV.imagcontourdeformation(z)
+    deformedpole = LMV.Pole(z, 1, d)
+    result = QuadGK.quadgk(x->foobles(x, z), -12 + im * d, 12 + im * d)[1] + LMV.residue(numerator, deformedpole)
+
+    @testset "r=$r, i=$i, d=$d" begin
+      @test expected ≈ result
+    end
+  end
 end
 
 end

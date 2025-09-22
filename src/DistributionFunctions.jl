@@ -82,6 +82,27 @@ function integrate(f::AbstractFParallelNumerical, numerator_kernel::T,
     pole::Pole, ∂F∂v::Bool,
     tol::Tolerance=Tolerance()) where {T<:Function}
   fv = f(∂F∂v) # TODO
+#  numerator(v) = fv(v) * numerator_kernel(v)
+#  integrand(v) = numerator(v) / (v - pole)
+#
+#  deformation = imagcontourdeformation(pole)
+#
+#  deformedpole = Pole(pole.pole, pole.realkparallel, deformation)
+#
+#  limits = [f.lower, f.upper]
+#  Δ = 2*(f.upper - f.lower)
+#  output = QuadGK.quadgk(integrand, limits[1] + im * deformation, limits[2] + im * deformation,
+#    rtol=tol.rel, atol=tol.abs, order=quadorder_para, norm=quadnorm)[1]
+#  if f.upper < real(pole) < f.upper + Δ
+#    output += QuadGK.quadgk(integrand, limits[2] + im * deformation, limits[2] + Δ + im * deformation,
+#     rtol=tol.rel, atol=tol.abs, order=quadorder_para, norm=quadnorm)[1]
+#  elseif f.lower - Δ < real(pole) < f.lower
+#    output += QuadGK.quadgk(integrand, limits[1] - Δ + im * deformation, limits[1] + im * deformation,
+#      rtol=tol.rel, atol=tol.abs, order=quadorder_para, norm=quadnorm)[1]
+#  end
+#
+#  return output + residue(numerator, deformedpole)
+
   numerator(v) = fv(v) * numerator_kernel(v) # / (v - pole) is implied
   integrand = foldnumeratoraboutpole(numerator, pole)
 
@@ -117,9 +138,11 @@ function integrate(f::AbstractFParallelNumerical, numerator_kernel::T,
   end
   polefix = wavedirectionalityhandler(pole)
   residueatpole = polefix(residue(numerator, polefix(pole)))
+#  residueatpole = residue(numerator, pole)
 
   output = Complex(principal) + residueatpole
   return output
+
 end
 
 """

@@ -32,16 +32,13 @@ include("../species/NumericalSpecies.jl")
         realratios += abs((real(a) - real(b)) / real(a))
         imagratios += abs((imag(a) - imag(b)) / imag(a))
         if !isapprox(real(a), real(b), rtol=1.0e-3)
-          r = (real(b) - real(a))/max(abs(real(a)), abs(real(a)))
           push!(realfails, n)
           verbose && @show "n = $n, ωandkz = $ωandkz"
         end
         if !isapprox(imag(a), imag(b), rtol=1.0e-3)
-          r = (imag(b) - imag(a))/max(abs(imag(a)), abs(imag(a)))
           push!(imagfails, n)
         end
         @test a ≈ b rtol=1.0e-3
-        #verbose && isapprox(a, b, rtol=1.0e-3) || @show n, ωandkz
       end
     end
     verbose && @show imagratios

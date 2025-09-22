@@ -144,7 +144,9 @@ include("../species/NumericalSpecies.jl")
       t1 = @elapsed output = LMV.parallel(s.Fz, ω, kz, n, s.Ω, UInt64(pow), diffbool)
       analytical = para_integral(s, ω, kz, n, UInt64(pow), diffbool, vth)
       Base.isnan(analytical) && continue
-      @test output ≈ analytical  atol=1.0e-2 rtol=1.0e-2
+      @testset "test: kz=$(kz), ω=$(ω), n=$(n), pow=$(pow), diffbool=$(diffbool)" begin
+        @test output ≈ analytical  atol=1.0e-2 rtol=1.0e-2
+      end
     end
   end
 
