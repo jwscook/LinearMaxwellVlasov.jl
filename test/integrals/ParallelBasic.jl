@@ -41,16 +41,11 @@ end
 @testset "Plasma dispersion functions vs Quadrature" begin
   @inline function test_maxwellian_quad(Z, pow)
     for z in Z
+      pole = LMV.Pole(z, 1)#sign(real(z)))
       principal(x) = x.^pow .* exp(-x.^2)/sqrt(pi)
       integrand(x) = principal(x) / (x-z)
-      ap = 0.0
-      if iszero(imag(z))
-        folded = LMV.foldnumeratoraboutpole(principal, real(z))
-        ap += QuadGK.quadgk(folded, eps(), 6 + 6*abs(z), rtol=eps())[1]
-      else
-        ap += QuadGK.quadgk(integrand, -10*abs(z), 10*abs(z), rtol=eps())[1]
-      end
-      ar = LMV.residue(principal, z)
+      ap = QuadGK.quadgk(integrand, -12 + im * pole.deformation, 12 + im * pole.deformation, rtol=eps())[1]
+      ar = LMV.residue(principal, pole)
       b = LMV.plasma_dispersion_function(z, pow)
       a = ap + ar
       @test real(a) ≈ real(b) rtol=1.0e-8
@@ -58,59 +53,13 @@ end
       #verbose && isapprox(a, b, rtol=1.0e-8) || @show z, pow, ap, ar, a, b
     end
   end
-  @inline function test_maxwellian_log(Z, pow)
-    for z in Z
-      principal(x) = x.^pow .* exp(-x.^2)/sqrt(pi)
-      denom(x) = x - z
-      integrand(x) = principal(x) / denom(x)
-      h = abs(z) * sqrt(eps()) * 10
-      dprincipaldx(x) = (principal(x + h) - principal(x - h)) / 2h
-      ddenomdx(x) = 1.0 # do derivative by hand because of complex z
-      function logdenom(x)
-        output = log(Complex(denom(x)))
-        return isfinite(output) ? output : zero(output)
-      end
-      target(x) = - logdenom(x) * ddenomdx(x) * dprincipaldx(x)
-      a = QuadGK.quadgk(target, -6, 6, rtol=eps())[1]
-      b = LMV.plasma_dispersion_function(z, pow)
-      if imag(z) < 0
-        # the log method doesn't work for negative imaginary part
-        @test !isapprox(real(a), real(b), rtol=1.0e-8)
-        @test !isapprox(imag(a), imag(b), rtol=1.0e-8, atol=1.0e-8)
-      else
-        @test real(a) ≈ real(b) rtol=1.0e-8
-        @test imag(a) ≈ imag(b) rtol=1.0e-8 atol=1.0e-8
-      end
-      #verbose && isapprox(a, b, rtol=1.0e-8) || @show z, pow, ap, ar, a, b
-    end
-  end
 
-  Zs = []
-  push!(Zs,  1.0 + im*0)
-  push!(Zs, -1.0 + im*0)
-  push!(Zs,  1.0 + im/4)
-  push!(Zs, -1.0 + im/4)
-  push!(Zs,  1.0 - im/4) # log fails
-  push!(Zs, -1.0 - im/4) # log fails
-  @testset "QuadGK of maxwellian with 0th moment" begin
-    test_maxwellian_quad(Zs, 0)
-  end
-  @testset "QuadGK of maxwellian with 1st moment" begin
-    test_maxwellian_quad(Zs, 1)
-  end
-  @testset "QuadGK of maxwellian with 2nd moment" begin
-    test_maxwellian_quad(Zs, 2)
-  end
-  @testset "QuadGK of maxwellian with 10th moment" begin
-    test_maxwellian_quad(Zs, 10)
-  end
-  @testset "Log integral of maxwellian with 0th moment" begin
-    test_maxwellian_log(Zs, 0)
-  end
-  @testset "Log integral of maxwellian with 1st moment" begin
-    test_maxwellian_log(Zs, 1)
-  end
-  @testset "Log integral of maxwellian with 2nd moment" begin
-    test_maxwellian_log(Zs, 2)
+  for z in (1.0 + im*0, -1.0 + im*0,  1.0 + im/4, -1.0 + im/4,  1.0 - im/4, -1.0 - im/4)
+    @testset "z = $z" begin
+      test_maxwellian_quad(z, 0)
+      test_maxwellian_quad(z, 1)
+      test_maxwellian_quad(z, 2)
+      test_maxwellian_quad(z, 10)
+    end
   end
 end

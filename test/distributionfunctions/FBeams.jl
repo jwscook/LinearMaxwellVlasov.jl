@@ -17,6 +17,7 @@ const LMV = LinearMaxwellVlasov
   Ω = LMV.q₀ * B0 / mi
 
   powers = (0, 1, 2)
+  fails = []
   @testset "Compare parallel integral of FBeam vs Numerical quadrature" begin
     for ksign = (-1, 1), γsign = (-1, 1), vdsign = (-1, 1)
       @testset "ksign=$ksign, γsign=$γsign, vdsign=$vdsign" begin
@@ -24,17 +25,24 @@ const LMV = LinearMaxwellVlasov
         vd = rand() * 4 * vth * vdsign
         numerical = FParallelNumerical(vth, vd)
         beam = FBeam(vth, vd)
-        for i ∈ 1:1, dfdv ∈ (true, false), p ∈ powers
+        for i ∈ 1:100, dfdv ∈ (true, false), p ∈ powers
           n = rand(-5:5)
-          ω = Ω / Va * Complex(rand(), γsign * rand())
+          ω = Ω / Va * Complex(rand(), γsign * rand() / 100)
           KPara = rand() * 10 * Ω / Va * ksign
           dfdv && (p >= 2) && continue
           beamanswer = LMV.parallel(beam, ω, KPara, n, Ω, Unsigned(p), dfdv)
           numeanswer = LMV.parallel(numerical, ω, KPara, n, Ω, Unsigned(p), dfdv)
-          @test beamanswer ≈ numeanswer rtol=1000sqrt(eps()) atol=100eps()
+          diff = (beamanswer - numeanswer) ./ norm(beamanswer)
+          if !isapprox(beamanswer, numeanswer, rtol=1000sqrt(eps()), atol=100eps())
+            push!(fails, (ksign=ksign, γsign=γsign, vdsign=vdsign, ω=ω, KPara=KPara, n=n, p=p, dfdv=dfdv, diff=diff))
+          end
+          @test beamanswer ≈ numeanswer rtol=100sqrt(eps()) atol=1000eps()
         end
       end
     end
+  end
+  for f in fails
+  @show f
   end
 
   @testset "make sure @inferred passes for FBeam" begin

@@ -4,6 +4,7 @@ println("$(now()) $(@__FILE__)")
 using Test, Random, DualNumbers, SpecialFunctions, LinearAlgebra
 using LinearMaxwellVlasov
 const LMV = LinearMaxwellVlasov
+using Statistics
 
 Random.seed!(0)
 
@@ -29,6 +30,7 @@ Random.seed!(0)
     argsR = ones(4) * vth
     coupledRingBeam = CoupledVelocitySpecies(Π, Ω, argsR...)
     separableRingBeam = RingBeamSpecies(Π, Ω, argsR...)
+    norms = []
 
     for (coupled, separable) ∈ (
                                 (coupledMaxwellian, separableMaxwellian),
@@ -39,7 +41,7 @@ Random.seed!(0)
       σs = (0, -1e-1, 1e-1, -1e-2, 1e-2, -1e-5, 1e-5, -1e-8, 1e-8, -1e-10, 1e-10)
       kzs = (2k, k/2, 0, -k/2, -2k)
       k⊥s = (k/2, 2k)
-      for σ ∈ σs, kz in kzs, k⊥ in k⊥s, ωr in ωrs
+      for kz in kzs, σ ∈ σs, k⊥ in k⊥s, ωr in ωrs
         # this clearly isn't great, but how often is σ zero
         F = ComplexF64(ωr, σ * ωr)
         K = Wavenumber(kz=kz, k⊥=k⊥)
@@ -51,9 +53,10 @@ Random.seed!(0)
         outputC = LMV.contribution(coupled, config)
 
         @test separable(0.0, 0.0) ≈ coupled(0.0, 0.0)
+        push!(norms, (norm(outputC - outputS)) / norm(outputS))
 
         atol=10eps() * norm(outputS)
-        @testset "$M, $(ωr/Ω), $σ, $kz, $k⊥" begin
+        @testset "$kz, $σ, $k⊥, $M, $(ωr/Ω)" begin
           @test outputC[1,1]≈outputS[1,1] rtol=rtol atol=atol
           @test outputC[1,2]≈outputS[1,2] rtol=rtol atol=atol
           @test outputC[1,3]≈outputS[1,3] rtol=rtol atol=atol
@@ -66,5 +69,7 @@ Random.seed!(0)
         end
       end
     end
+    @show mean(norms)
+    @show std(norms)
   end
 end

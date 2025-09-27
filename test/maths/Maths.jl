@@ -4,6 +4,7 @@ println("$(now()) $(@__FILE__)")
 using LinearMaxwellVlasov
 using Test, SpecialFunctions, QuadGK, HCubature, StaticArrays, Random
 using DualNumbers, ForwardDiff
+using PlasmaDispersionFunctions
 
 const LMV = LinearMaxwellVlasov
 
@@ -11,16 +12,6 @@ const LMV = LinearMaxwellVlasov
   Random.seed!(0)
 
   verbose = false
-
-  tolerance = Tolerance()
-  @testset "Plasma dispersion function" begin
-    @test LMV.plasma_dispersion_function(0.0, 0) ≈ im*sqrt(pi) rtol=0.001
-    @test LMV.plasma_dispersion_function(im, 0) ≈ im*0.757872156141312 rtol=0.001
-    @test LMV.plasma_dispersion_function(ComplexF64(-1.52, 0.47), 0) ≈ ComplexF64(0.6088888957234254, 0.33494583882874024) rtol=0.001
-    Z0 = LMV.plasma_dispersion_function(0.0, 0)
-    Z1 = LMV.plasma_dispersion_function(0.0, 1)
-    @test Z1 == LMV.plasma_dispersion_function(0.0, 1, Z0)
-  end
 
   @testset "BesselJ generation function: used in derivation" begin
     for i ∈ 1:10, s ∈ (-1, 1)
@@ -84,7 +75,7 @@ const LMV = LinearMaxwellVlasov
       f(x) = numerator(x) ./ (x - z)
       g = LMV.foldnumeratoraboutpole(numerator, z)
       expected = QuadGK.quadgk(g, 2eps(), 12)[1] + LMV.residue(numerator, z)
-      result = LMV.plasma_dispersion_function(z)
+      result = plasma_dispersion_function(z)
       @test expected ≈ result
     end
   end

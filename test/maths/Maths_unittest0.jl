@@ -21,7 +21,7 @@ verbose = false
       else
         ap += QuadGK.quadgk(integrand, -10*abs(z), 10*abs(z), rtol=eps())[1]
       end
-      ar = LMV.residue(principle, z)
+      ar = LMV.residue(principle, LMV.Pole(z, 1))
       #ar = ar # 2 wrong
       #ar = sign(real(z)) < 0 ? conj(ar) : ar # 4 wrong
       #ar = sign(real(z)) < 0 ? -ar : ar # 5 wrong

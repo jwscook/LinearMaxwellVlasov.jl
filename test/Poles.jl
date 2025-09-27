@@ -5,19 +5,19 @@ using Random, Test, InteractiveUtils, QuadGK
 
 using LinearMaxwellVlasov
 const LMV = LinearMaxwellVlasov
-
+using PlasmaDispersionFunctions
 
 @testset "Poles" begin
 @testset "Pole fix" begin
   pole⁺ = LMV.Pole(1.0, 1)
   z = 1.0 + im
-  for op ∈ (#=pole⁺, =#LMV.wavedirectionalityhandler(pole⁺),)
+  for op ∈ (LMV.wavedirectionalityhandler(pole⁺),)
     @test op(1) == 1
     @test op(z) == z
     @test op(conj(z)) == conj(z)
   end
   pole⁻ = LMV.Pole(1.0, -1)
-  for op ∈ (#=pole⁻, =#LMV.wavedirectionalityhandler(pole⁻),)
+  for op ∈ (LMV.wavedirectionalityhandler(pole⁻),)
     @test op(1) == 1
     @test op(z) == conj(z)
     @test op(conj(z)) == z
@@ -59,10 +59,10 @@ end
     iszero(d - i) && continue # otherwise test logic is broken ...
     pole = LMV.Pole(z, 1)
 
-    expected = LMV.plasma_dispersion_function(z)
+    expected = plasma_dispersion_function(z)
 
     g = LMV.foldnumeratoraboutpole(numerator, z)
-    standardmethod = QuadGK.quadgk(g, 2eps(), 12)[1] + LMV.residue(numerator, z)
+    standardmethod = QuadGK.quadgk(g, 2eps(), 12)[1] + LMV.residue(numerator, pole)
 
     σ = LMV.residuesigma(pole - im * d)
     rs = im * π * σ * numerator(z)
@@ -86,7 +86,7 @@ end
   for r in (1.0,), i in (0.1, -0.1, 0.0, 1e-10, -1e-10)
     z = r + im * i
 
-    expected = LMV.plasma_dispersion_function(z)
+    expected = plasma_dispersion_function(z)
 
     d = LMV.imagcontourdeformation(z)
     deformedpole = LMV.Pole(z, 1, d)

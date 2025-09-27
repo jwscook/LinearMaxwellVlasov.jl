@@ -28,6 +28,7 @@ end
       resultDb = @inferred LMV.parallel(Db, ω, K, n, Ω, pow, dFdv)
       @test resultBb ≈ resultDb rtol=reltol atol=0
     catch e
+      @warn e
       @test false
     end
   end
