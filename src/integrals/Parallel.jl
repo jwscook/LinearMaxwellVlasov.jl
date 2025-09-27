@@ -1,4 +1,4 @@
-using CommonSubexpressions, MuladdMacro
+using CommonSubexpressions, MuladdMacro, PlasmaDispersionFunctions
 
 struct ParallelKernelNumerator <: Function
   power::UInt64

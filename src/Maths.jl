@@ -24,48 +24,6 @@ function besselix(n::Integer, x::DualNumbers.Dual{T}) where T
     d * (didr * exp(-abs(real(r))) - sign(real(r)) * bix))
 end
 
-
-
-#```math
-#\mathcal{Z_0}\left(z\right)=\frac{1}{\sqrt{\pi}}\int_{-\infty}^{\infty}\frac{\exp\left(-x^{2}\right)}{x-z}dx+\sigma i\sqrt{\pi}\exp\left(-z^{2}\right)=i\sqrt{\pi}\exp\left(-z^{2}\right)\mathrm{erfc}\left(-iz\right)
-#```
-"""
-Return the value of the plasma dispersion function
-This implementation includes the residue, which is easy to verify
-because Z(0) = im sqrt(π).
-
- - x is the argument to the plasma disperion function
- - power is the moment of the integral
-
-[1] S.D. Baalrud, Phys. Plasmas 20, 012118 (2013) and put ν = -Inf
-[2] M. Sampoorna et al., Generalized Voigt functions and their derivatives,
-  Journal of Quantitative Spectroscopy & Radiative Transfer (2006),
-  doi:10.1016/j.jqsrt.2006.08.011
-"""
-function plasma_dispersion_function(x::T, power::Unsigned=UInt64(0), Z₋₁=missing
-    ) where {T<:Number}
-  R = float(real(T))
-  @inline function _const(i::Signed)::R
-    0 <= i <= 1 && return R(i) # make sure that 0 & 1 are handled quickly
-    return iseven(i) ? R(0) : R(prod(1:2:(i - 2)) * R(2)^div(1 - i, 2))
-  end
-  if ismissing(Z₋₁)
-    Z = im * sqrt(R(π)) * erfcx(-im * x)# handle e.g. big float π
-    for i ∈ 1:power
-      @muladd Z = x * Z + _const(Signed(i))
-    end
-    return Z
-  else
-    return @muladd x * Z₋₁ + _const(Signed(power))
-  end
-end
-
-function plasma_dispersion_function(x::T, power::Int, Z₋₁=missing
-    ) where {T<:Number}
-  @assert power >= 0 "power, $power, must be >= 0"
-  return plasma_dispersion_function(x, Unsigned(power), Z₋₁)
-end
-
 """
 Takes a function that when integrated between -Inf and +Inf returns value x,
 and returns a new function that returns x when integrated between real(pole)
