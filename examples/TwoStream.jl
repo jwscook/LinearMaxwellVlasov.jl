@@ -9,7 +9,6 @@ const name_extension = "TwoStream"
 
 using ProgressMeter # for some reason must be up here on its own
 using StaticArrays
-using FastClosures
 
 using LinearMaxwellVlasov, LinearAlgebra, WindingNelderMead
 
@@ -89,8 +88,8 @@ function findsolutions(species)
   ngridpoints = 2^9
   kzs = range(-2, stop=2, length=ngridpoints) * k0
   # change order for better distributed scheduling
-  cache = Cache(;perpendiculartype=Float64)
-  objective! = @closure (C, x) -> f2Dω!(C, x, species, cache)
+  cache = Cache()
+  objective! = (C, x) -> f2Dω!(C, x, species, cache)
   solutions = Vector()
   for (ikz, kz) ∈ enumerate(kzs)
     K = Wavenumber(parallel=kz, perpendicular=0.0)
@@ -101,7 +100,7 @@ function findsolutions(species)
   return solutions
 end
 
-Plots.pyplot()
+Plots.gr()
 function plotit(sols, file_extension=name_extension, fontsize=9)
   sols = sort(sols, by=s->imag(s.frequency))
   ωs = [sol.frequency for sol in sols]./f0

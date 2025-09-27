@@ -2,9 +2,7 @@ using Dates
 
 println("Starting BumpOnTail at ", now())
 using LinearMaxwellVlasov
-using Random, Profile, StatProfilerHTML
-using Optim, Plots, LinearAlgebra, NelderMead
-using BenchmarkTools, InteractiveUtils
+using Random, Plots, LinearAlgebra, WindingNelderMead, NelderMead
 Plots.gr()
 Random.seed!(0)
 
@@ -42,9 +40,9 @@ function run()
     Plots.plot(v/(Πe/kD), electron_and_beam.Fb.F(v)/vthe, linestyle=:cyan)
     Plots.plot!(v/(Πe/kD), electron_and_beam.Fb.dFdv(v), linestyle=:black)
   end
-  function f!(C::Configuration, x::Vector{T}, S) where {T<:Number}
+  function f!(C::Configuration, x::Union{Tuple, AbstractVector}, S)
     C.frequency = ComplexF64(x[1], x[2])
-    return abs(tensor(S, C)[3, 3])
+    return tensor(S, C)[3, 3]
   end
 
   N = 64
@@ -65,11 +63,27 @@ function run()
         propagationangle=1.0e-8*π)
       neldermeadsol = NelderMead.optimise(x->norm(objective(c, x)),
         (ub .+ lb) / 2, (ub .- lb) ./ 1000; stopval=1.0e-4, timelimit=10)
-      val, minimizer, returncode, numiterations = neldermeadsol
+      minimizer, val, returncode, numiterations = neldermeadsol
       if returncode == :STOPVAL_REACHED
+          @show minimizer
         objective(c, minimizer)
         push!(solutions, c)
       end
+      #neldermeadsol = WindingNelderMead.optimise(x->objective(c, x),
+      #  (ub .+ lb) / 2, (ub .- lb) ./ 1000; stopval=1.0e-4, timelimit=10,
+      #  maxiters=200, ftol_rel=0, ftol_abs=0,
+      #  xtol_rel=norm(ub .- lb) / 1000, xtol_abs=norm(ub .- lb) / 1000)
+      #simplex, windingnumber, returncode, numiterations = neldermeadsol
+      #if (windingnumber == 1 && returncode == :XTOL_REACHED)
+      #  c = deepcopy(config)
+      #  minimiser = if windingnumber == 0
+      #    WindingNelderMead.position(WindingNelderMead.bestvertex(simplex))
+      #  else
+      #    WindingNelderMead.centre(simplex)
+      #  end
+      #  unitobjective!(c, minimiser)
+      #  push!(output, c)
+      #end
     end
     return solutions
   end
