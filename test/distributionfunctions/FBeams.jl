@@ -28,13 +28,18 @@ const LMV = LinearMaxwellVlasov
         for i ∈ 1:100, dfdv ∈ (true, false), p ∈ powers
           n = rand(-5:5)
           ω = Ω / Va * Complex(rand(), γsign * rand() / 100)
-          KPara = rand() * 10 * Ω / Va * ksign
+          kpara = rand() * 10 * Ω / Va * ksign
+          wavenumber = Wavenumber(kpara, 0.0)
           dfdv && (p >= 2) && continue
-          beamanswer = LMV.parallel(beam, ω, KPara, n, Ω, Unsigned(p), dfdv)
-          numeanswer = LMV.parallel(numerical, ω, KPara, n, Ω, Unsigned(p), dfdv)
+          ms = wavenumber.multipliersign
+          beamanswertuple = LMV.parallel(beam, ω, wavenumber, n * Ω)
+          ind = findfirst(i == (Unsigned(p), dfdv) for i in LMV.PARALLEL_TUPLE_ORDER)
+          beamanswer = beamanswertuple[ind]
+          numeanswer = LMV.parallel(numerical, ω, wavenumber, n * Ω, Unsigned(p), dfdv)
           diff = (beamanswer - numeanswer) ./ norm(beamanswer)
           if !isapprox(beamanswer, numeanswer, rtol=1000sqrt(eps()), atol=100eps())
-            push!(fails, (ksign=ksign, γsign=γsign, vdsign=vdsign, ω=ω, KPara=KPara, n=n, p=p, dfdv=dfdv, diff=diff))
+            push!(fails, (ksign=ksign, γsign=γsign, vdsign=vdsign, ω=ω,
+                          wavenumber=wavenumber, n=n, p=p, dfdv=dfdv, diff=diff))
           end
           @test beamanswer ≈ numeanswer rtol=100sqrt(eps()) atol=1000eps()
         end

@@ -1,21 +1,19 @@
-struct Pole{T<:Number, U<:Real, V<:Real} <: Number
+struct Pole{T<:Number, U<:Real} <: Number
   pole::T
-  realkparallel::U
-  deformation::V
-  function Pole(pole::T, kparallel::U, deformation::V=0.0) where {T<:Number, U<:Real, V<:Real}
-    return new{T, U, V}(pole, kparallel, deformation)
-  end
+  multipliersign::Int
+  deformation::U
 end
-function Pole(pole::T, kparallel::Complex) where {T<:Number}
-  return Pole(pole, real(kparallel))
+function Pole(pole::Number, multipliersign::Int)
+  return Pole(pole, multipliersign, imagcontourdeformation(pole))
 end
 
-function Pole(ω::Number, kparallel::Number, n::Integer, Ω::Number)
-  T = promote_type(typeof(ω), typeof(kparallel), typeof(n), typeof(Ω))
-  op(x) = iszero(imag(ω)) ? real(x) : identity(x)
-  return Pole(T((op(ω) - n * Ω) / kparallel), kparallel)
+function Pole(ω::Number, kparallel::Number, n::Integer, Ω::Number,
+    multipliersign::Int, deformation=imagcontourdeformation((ω - n * Ω) / kz))
+  @assert real(ω) >= 0
+  @assert kparallel >= 0
+  return Pole((ω - n * Ω) / kparallel, multipliersign, deformation)
 end
-Pole(ω, K::Wavenumber, n, Ω) = Pole(ω, parallel(K), n, Ω)
+Pole(ω, K::Wavenumber, n, Ω, deformation=nothing) = Pole(ω, parallel(K), n, Ω, K.multipliersign, deformation)
 
 for op ∈ (:abs, :conj, :real, :imag, :reim, :isreal, :float, :isfinite, :angle)
   @eval Base.$op(f::Pole) = $op(f.pole)
@@ -23,6 +21,7 @@ end
 Base.:-(p::Pole) = - p.pole
 Base.:-(x::Number, p::Pole) = x - p.pole
 Base.:-(p::Pole, x::Number) = p.pole - x
+Base.:-(d::Dual, p::Pole) = d - p.pole
 Base.:+(x::Number, p::Pole) = x + p.pole
 Base.:+(p::Pole, x::Number) = p.pole + x
 Base.:*(x::Number, p::Pole) = x * p.pole
@@ -31,47 +30,6 @@ Base.:^(p::Pole, n::Integer) = p.pole^n
 pole(p::Pole) = p.pole
 import DualNumbers: Dual
 Dual(p::Pole, x) = Dual(p.pole, x)
-
-"""
-    wavedirectionalityhandler(x::Number,kz::Number)
-
-Take into account the size of kz when performing parallel integrals
-
-Most codes, assume that kz is real, but this is not always the case.
-Usually, they take the absolute value of kz, but this does not respect
-complex kz in convetive instability calculations, for example
-
-...
-# Arguments
-- `x::Number`:
-- `kz::Number`:
-...
-"""
-function wavedirectionalityhandler(x::Number, kz::Number)
-  # this way works with DualNumbers
-  return real(x) + im * (real(kz) > 0 ? imag(x) : -imag(x))
-end
-
-wavedirectionalityhandler(x::Number, pole::Pole) = wavedirectionalityhandler(x, pole.realkparallel)
-wavedirectionalityhandler(pole::Pole) = x->wavedirectionalityhandler(x, pole)
-
-"""
-    residue(numerator::T,pole::Number)where{T<:Function}
-
-Calculate the residue of a number function at a pole
-
-...
-# Arguments
-- `numerator::T`:
-- `pole::Number`:
-...
-"""
-#function residue(numerator::T, pole::Pole) where {T<:Function}
-#  return residue(numerator(pole), pole.pole)
-#end
-function residue(numerator::T, pole::Number) where {T<:Function}
-  return residue(numerator(pole), pole)
-end
 
 """
     residue(principalpart,pole::Number)
@@ -90,20 +48,14 @@ function residue(principalpart, pole)
   return output
 end
 
-function conditionalconj(x, cond::Bool)
-  # this way works with DualNumbers
-  return real(x) + im * (cond ? imag(x) : -imag(x))
-end
-
-function residue(numerator, pole::Number, realkparallel::Real, deformation::Real)
-  cond = (realkparallel > 0)
+function residue(numerator, pole::Number, deformation::Real)
   principalpart = numerator(pole)
   σ = residuesigma(pole - im * deformation)
   iszero(σ) && return zero(principalpart) # defend against overflow
-  return im * (σ * π * principalpart) * (realkparallel > 0 ? 1 : -1)
+  return im * (σ * π * principalpart)
 end
 function residue(numerator::F, p::Pole) where {F<:Function}
-  return residue(numerator, p.pole, p.realkparallel, p.deformation)
+  return residue(numerator, p.pole, p.deformation)
 end
 
 """
@@ -113,24 +65,23 @@ Calculate the "sigma" factor of the residue
 """
 function residuesigma(pole::Number)
   return imag(pole) < 0 ? 2 : imag(pole) == 0 ? 1 : 0
-#  return realkparallel > 0 ? σ : -σ
 end
 residuesigma(pole::Pole) = residuesigma(pole.pole - im * pole.deformation)
 
-function imagcontourdeformation(x, δ=1.0e-7)
+function imagcontourdeformation(x, δ=1.0e-2)
   r, i = reim(x)
   θ = abs(angle(Complex(abs(r), abs(i))))
   deformation = if θ >= δ
     zero(r)
   else
-    δ * (iszero(r) ? one(r) : abs(r)) - i
+    #-abs(i - δ * (iszero(r) ? one(r) : abs(r)))
+    -(atan(δ) * abs(r) + abs(i))
   end
-  @assert δ >= 0 # deformatino is always positive
+  @assert deformation <= 0 # deformation is always negative or zero
   @assert !iszero(i + deformation) "x, δ = $x, $δ"
-  resultangle = abs(angle(r + im * (i + deformation)))
-  @assert resultangle > δ || resultangle ≈ δ "resultangle, x, δ = $resultangle, $x, $δ"
   return deformation
 end
+
 
 """
     discretefouriertransform(f::T,n::Int,N=512)where{T<:Function}

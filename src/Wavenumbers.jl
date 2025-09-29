@@ -1,5 +1,6 @@
 using LinearAlgebra, StaticArrays
 
+
 """
 Wavenumber decomposed into parallel and perpendicular components
 Construct with parallel and wavenumber components, or by keyword arguement pairs
@@ -9,6 +10,14 @@ Construct with parallel and wavenumber components, or by keyword arguement pairs
 struct Wavenumber{T<:Number, U<:Number}
   parallel::T
   perpendicular::U
+  multipliersign::Int
+  function Wavenumber(parallel::T, perpendicular::U) where {T<:Number, U<:Number}
+    multipliersign = real(parallel) >= 0 ? 1 : -1
+    @assert real(parallel) * multipliersign >= 0
+    parallel *= multipliersign
+    @assert real(parallel) >= 0
+    return new{T, U}(parallel, perpendicular, multipliersign)
+  end
 end
 function Wavenumber(;kwargstuple...)
   kwargs = Dict(kwargstuple)
@@ -31,13 +40,13 @@ function Wavenumber(;kwargstuple...)
   elseif !isempty(kwargs)
     throw(ArgumentError("Invalid Wavenumber construction, kwargs=$kwargstuple"))
   end
-  return Wavenumber(0.0, 0.0)
+  throw(ArgumentError("Invalid Wavenumber construction, kwargs=$kwargstuple"))
 end
 
 @inline parallel(K::Wavenumber) = K.parallel
 @inline perpendicular(K::Wavenumber) = K.perpendicular
 
-@inline propagationangle(K::Wavenumber) = atan(K.perpendicular, K.parallel)
+@inline propagationangle(K::Wavenumber) = atan(K.perpendicular, K.parallel * K.multipliersign)
 
 Base.angle(K::Wavenumber) = propagationangle(K)
 

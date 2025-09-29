@@ -11,7 +11,7 @@ const k0 = -1.234
   @testset "parallel" begin
     for θ in (eps(), -eps())
       K = Wavenumber(wavenumber=k0, propagationangle=θ)
-      @test para(K) ≈ k0
+      @test para(K) * K.multipliersign ≈ k0
       @test perp(K) ≈ 0.0 atol=10eps()
     end
   end
@@ -19,7 +19,7 @@ const k0 = -1.234
   @testset "anti parallel" begin
     for θ in (π, -π)
       K = Wavenumber(wavenumber=k0, propagationangle=θ)
-      @test para(K) ≈ -k0
+      @test para(K) * K.multipliersign ≈ -k0
       @test perp(K) ≈ 0.0 atol=10eps()
     end
   end

@@ -124,8 +124,7 @@ end
 function CoupledVelocitySpecies(Π::Float64, Ω::Float64, vthz::Float64,
     vth⊥::Float64=vthz, vzdrift::Float64=0.0, v⊥drift::Float64=0.0)
   return CoupledVelocitySpecies(Π, Ω,
-    FCoupledVelocityNumerical(vthz, vth⊥,
-      vzdrift, v⊥drift))
+    FCoupledVelocityNumerical(vthz, vth⊥, vzdrift, v⊥drift))
 end
 
 lowerintegralbounds(S::CoupledVelocitySpecies) = (-upper(S.F), lower(S.F))

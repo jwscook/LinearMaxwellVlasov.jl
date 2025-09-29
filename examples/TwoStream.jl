@@ -86,7 +86,10 @@ end
 
 function findsolutions(species)
   ngridpoints = 2^9
-  kzs = range(-2, stop=2, length=ngridpoints) * k0
+  kzs = collect(range(-2, stop=2, length=ngridpoints)) * k0
+  push!(kzs, Πe / vbeam)
+  push!(kzs, -Πe / vbeam)
+  sort!(kzs)
   # change order for better distributed scheduling
   cache = Cache()
   objective! = (C, x) -> f2Dω!(C, x, species, cache)
@@ -104,7 +107,10 @@ Plots.gr()
 function plotit(sols, file_extension=name_extension, fontsize=9)
   sols = sort(sols, by=s->imag(s.frequency))
   ωs = [sol.frequency for sol in sols]./f0
-  kzs = [para(sol.wavenumber) for sol in sols]./k0
+  kzs = [para(sol.wavenumber) * sol.wavenumber.multipliersign for sol in sols]./k0
+  p = sortperm(imag.(ωs))
+  ωs = ωs[p]
+  kzs = kzs[p]
 
   xlabel = "\$\\mathrm{Wavenumber} \\quad [\\Pi_{e} / v_b]\$"
   ylabel = "\$\\mathrm{Frequency} \\quad [\\Pi_{e}]\$"

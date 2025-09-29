@@ -68,18 +68,6 @@ const LMV = LinearMaxwellVlasov
     end
   end
 
-  @testset "fold numerator about pole" begin
-    bnd = 12
-    for z in (3.0, 3.0 + im, 3.0 - im)
-      numerator(x) = exp.(-x.^2) / sqrt(π)
-      f(x) = numerator(x) ./ (x - z)
-      g = LMV.foldnumeratoraboutpole(numerator, z)
-      expected = QuadGK.quadgk(g, 2eps(), 12)[1] + LMV.residue(numerator, z)
-      result = plasma_dispersion_function(z)
-      @test expected ≈ result
-    end
-  end
-
   @testset "transform to polar" begin
     f(x) = exp(-sum(x.^2)) / π
     p = LMV.transformtopolar(f)

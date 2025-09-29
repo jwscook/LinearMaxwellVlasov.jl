@@ -8,21 +8,6 @@ const LMV = LinearMaxwellVlasov
 using PlasmaDispersionFunctions
 
 @testset "Poles" begin
-@testset "Pole fix" begin
-  pole⁺ = LMV.Pole(1.0, 1)
-  z = 1.0 + im
-  for op ∈ (LMV.wavedirectionalityhandler(pole⁺),)
-    @test op(1) == 1
-    @test op(z) == z
-    @test op(conj(z)) == conj(z)
-  end
-  pole⁻ = LMV.Pole(1.0, -1)
-  for op ∈ (LMV.wavedirectionalityhandler(pole⁻),)
-    @test op(1) == 1
-    @test op(z) == conj(z)
-    @test op(conj(z)) == z
-  end
-end
 
 @testset "CauchyResidues" begin
   for σ ∈ (1, -1)
@@ -61,14 +46,10 @@ end
 
     expected = plasma_dispersion_function(z)
 
-    g = LMV.foldnumeratoraboutpole(numerator, z)
-    standardmethod = QuadGK.quadgk(g, 2eps(), 12)[1] + LMV.residue(numerator, pole)
-
     σ = LMV.residuesigma(pole - im * d)
     rs = im * π * σ * numerator(z)
     ab = QuadGK.quadgk(x->foobles(x, z), -12 + im * d, 12 + im * d)[1] # ... here
     manualresult = ab + rs
-    @assert standardmethod ≈ expected # not the thing we're testing
 
     deformedpole = LMV.Pole(z, 1, d)
     result = QuadGK.quadgk(x->foobles(x, z), -12 + im * d, 12 + im * d)[1] + LMV.residue(numerator, deformedpole)

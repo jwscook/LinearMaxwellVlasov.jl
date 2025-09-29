@@ -1,6 +1,6 @@
 using QuadGK, SpecialFunctions, LinearAlgebra
 
-const default_integral_range = 8.0
+const default_integral_range = 12
 const quadorder = 32
 const quadorder_para = quadorder
 const quadorder_perp = quadorder
@@ -79,70 +79,18 @@ otherwise positive slopes at negative velocities give rise to instability and
 not damping.
 """
 function integrate(f::AbstractFParallelNumerical, numerator_kernel::T,
-    pole::Pole, ∂F∂v::Bool,
-    tol::Tolerance=Tolerance()) where {T<:Function}
+    pole::Pole, ∂F∂v::Bool, tol::Tolerance=Tolerance()) where {T<:Function}
   fv = f(∂F∂v) # TODO
-#  numerator(v) = fv(v) * numerator_kernel(v)
-#  integrand(v) = numerator(v) / (v - pole)
-#
-#  deformation = imagcontourdeformation(pole)
-#
-#  deformedpole = Pole(pole.pole, pole.realkparallel, deformation)
-#
-#  limits = [f.lower, f.upper]
-#  Δ = 2*(f.upper - f.lower)
-#  output = QuadGK.quadgk(integrand, limits[1] + im * deformation, limits[2] + im * deformation,
-#    rtol=tol.rel, atol=tol.abs, order=quadorder_para, norm=quadnorm)[1]
-#  if f.upper < real(pole) < f.upper + Δ
-#    output += QuadGK.quadgk(integrand, limits[2] + im * deformation, limits[2] + Δ + im * deformation,
-#     rtol=tol.rel, atol=tol.abs, order=quadorder_para, norm=quadnorm)[1]
-#  elseif f.lower - Δ < real(pole) < f.lower
-#    output += QuadGK.quadgk(integrand, limits[1] - Δ + im * deformation, limits[1] + im * deformation,
-#      rtol=tol.rel, atol=tol.abs, order=quadorder_para, norm=quadnorm)[1]
-#  end
-#
-#  return output + residue(numerator, deformedpole)
+  ms = pole.multipliersign
+  numerator(v) = fv(v * ms) * numerator_kernel(v * ms)
+  integrand(v) = numerator(v) / (v - pole)
 
-  numerator(v) = fv(v) * numerator_kernel(v) # / (v - pole) is implied
-  integrand = foldnumeratoraboutpole(numerator, pole)
+  limits = [f.lower, f.upper] .+ im * pole.deformation
+  Δ = (f.upper - f.lower)
+  output = QuadGK.quadgk(integrand, limits[1] - Δ, limits[2] + Δ,
+    rtol=tol.rel, atol=tol.abs, order=quadorder_para, norm=quadnorm)[1]
 
-  Δ_2 = (f.upper - f.lower) / 2
-
-  limits = [f.lower, f.upper]
-  overlap = (real(pole) - Δ_2  < f.upper) && (real(pole) + Δ_2 > f.lower)
-  if overlap
-    limits[1] = min(limits[1], real(pole) - Δ_2)
-    limits[2] = max(limits[2], real(pole) + Δ_2)
-  end
-
-  limits = unique(sort(limitsfolder(limits, real(pole))))
-  @assert 2 <= length(limits) <= 3
-  principal = first(quadrature(integrand, limits[1], limits[2],
-    rtol=tol.rel, atol=tol.abs, order=quadorder_para, norm=quadnorm))
-
-  if length(limits) == 3 # can't use limits... due to weird type instability
-    principal += first(quadrature(integrand, limits[2], limits[3],
-      rtol=tol.rel, atol=tol.abs, order=quadorder_para, norm=quadnorm))
-  end
-  # run out of digits? real(pole) ± Δ_2 == real(pole)
-  if !overlap
-    limits = limitsfolder(real(pole) .+ [- Δ_2, Δ_2], real(pole))
-    limits = unique(sort(limits))
-    @assert 2 <= length(limits) <= 3
-    principal += first(quadrature(integrand, limits[1], limits[2],
-      rtol=tol.rel, atol=tol.abs, order=quadorder_para, norm=quadnorm))
-    if length(limits) == 3
-      principal += first(quadrature(integrand, limits[2], limits[3],
-        rtol=tol.rel, atol=tol.abs, order=quadorder_para, norm=quadnorm))
-    end
-  end
-  polefix = wavedirectionalityhandler(pole)
-  residueatpole = polefix(residue(numerator, polefix(pole)))
-#  residueatpole = residue(numerator, pole)
-
-  output = Complex(principal) + residueatpole
-  return output
-
+  return output + residue(numerator, pole)
 end
 
 """

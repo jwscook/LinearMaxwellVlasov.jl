@@ -12,6 +12,7 @@ A disribution function where vz and v⊥ are coupled, i.e. non-separable.
 - `normalisation::Tuple{U,U}`: the speeds used for normalisation in parallel and perp [m/s]
 - `lower::Float64`: minimum speed for integration bounds [m/s]
 - `upper::Float64`: maximum speed for integration bounds [m/s]
+- `autonormalise::Bool`: (true) whether to normalise automatically
 ...
 
 # Example
@@ -32,7 +33,7 @@ struct FCoupledVelocityNumerical{T<:Function, U<:Number
   upper::Float64 # maximum speed for integration bounds
   function FCoupledVelocityNumerical(F::T, normalisation::Tuple{U,U},
       lower=0.0, upper=default_integral_range * norm(normalisation);
-      autonormalise::Bool=false) where {T, U}
+      autonormalise::Bool=true) where {T, U}
     output = new{T,U}(F, normalisation, lower, upper)
     if autonormalise
       n = integrate(output)
@@ -64,8 +65,11 @@ function FCoupledVelocityNumerical(vthz::Real, vth⊥::Real=vthz,
   Fz = ShiftedMaxwellianParallel(vthz, vdz)
   F⊥ = ShiftedMaxwellianPerpendicular(vth⊥, vd⊥)
   F = ShiftedMaxwellianCoupled(Fz, F⊥)
+  lower = max(0, min(abs(vdz) - default_integral_range * vthz, abs(vd⊥) - default_integral_range * vth⊥))
+  upper = sqrt((abs(vdz) + default_integral_range * vthz)^2 +
+               (abs(vd⊥) + default_integral_range * vth⊥)^2)
   normalisation = (vthz + abs(vdz), vth⊥ + abs(vd⊥))
-  return FCoupledVelocityNumerical(F, normalisation)
+  return FCoupledVelocityNumerical(F, normalisation, lower, upper)
 end
 
 function is_normalised(F::AbstractCoupledVelocity)

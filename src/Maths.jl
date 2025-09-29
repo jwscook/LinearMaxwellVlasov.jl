@@ -25,33 +25,6 @@ function besselix(n::Integer, x::DualNumbers.Dual{T}) where T
 end
 
 """
-Takes a function that when integrated between -Inf and +Inf returns value x,
-and returns a new function that returns x when integrated between real(pole)
-and +Inf.
-"""
-function foldnumeratoraboutpole(f::T, pole::Real) where {T}
-  folded(v::Number) = (f(v + pole) - f(-v + pole)) / v
-  folded(v) = (f(v[1] + pole, v[2]) - f(-v[1] + pole, v[2])) / v[1]
-  return folded
-end
-function foldnumeratoraboutpole(f::T, pole::Number) where {T}
-  r, i = reim(pole)
-  function folded(v)
-    a, b, c = f(r + v), f(r - v), 1 / (v - Complex(0, i))
-    return (a - b) * real(c) + (a + b) * Complex(0, imag(c))
-  end
-  return folded
-end
-"""
-Transform the limits of an integrand
-quadrature(foldnumeratoraboutpole(integrand, pole), limitsfolder(limits, pole)...)
-"""
-function limitsfolder(ls::AbstractVector{T}, pole) where {T}
-  U = promote_type(T, typeof(pole))
-  return vcat(abs.(U.(ls).- real(pole)), isreal(pole) ? eps(U) : zero(U))
-end
-
-"""
 Transform a function from domain [-∞, ∞]ⁿ down to [-1, 1]ⁿ
 """
 struct TransformFromInfinity{T, U}
