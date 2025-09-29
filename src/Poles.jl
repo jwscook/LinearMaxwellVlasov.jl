@@ -70,15 +70,17 @@ residuesigma(pole::Pole) = residuesigma(pole.pole - im * pole.deformation)
 
 function imagcontourdeformation(x, δ=1.0e-2)
   r, i = reim(x)
-  θ = abs(angle(Complex(abs(r), abs(i))))
-  deformation = if θ >= δ
+  θ = abs(angle(Complex(r, i)))
+  deformation = if !iszero(i) && θ >= δ
     zero(r)
   else
+    #atan((i - d) / r) = -δ
+    #(i - d) = -r * tan(δ)
     #-abs(i - δ * (iszero(r) ? one(r) : abs(r)))
-    -(atan(δ) * abs(r) + abs(i))
+    -(tan(δ) * abs(r) + i)
   end
   @assert deformation <= 0 # deformation is always negative or zero
-  @assert !iszero(i + deformation) "x, δ = $x, $δ"
+  @assert !iszero(i + deformation) "x, δ, deformation = $x, $δ, $deformation"
   return deformation
 end
 
