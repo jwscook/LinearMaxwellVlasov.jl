@@ -20,28 +20,29 @@ const LMV = LinearMaxwellVlasov
   fails = []
   @testset "Compare parallel integral of FBeam vs Numerical quadrature" begin
     for ksign = (-1, 1), γsign = (-1, 1), vdsign = (-1, 1)
-      @testset "ksign=$ksign, γsign=$γsign, vdsign=$vdsign" begin
-        vth = thermalspeed(1.0e4, mi)
-        vd = rand() * 4 * vth * vdsign
-        numerical = FParallelNumerical(vth, vd)
-        beam = FBeam(vth, vd)
-        for i ∈ 1:100, dfdv ∈ (true, false), p ∈ powers
-          n = rand(-5:5)
-          ω = Ω / Va * Complex(rand(), γsign * rand() / 100)
-          kpara = rand() * 10 * Ω / Va * ksign
-          wavenumber = Wavenumber(kpara, 0.0)
-          dfdv && (p >= 2) && continue
-          ms = wavenumber.multipliersign
-          beamanswertuple = LMV.parallel(beam, ω, wavenumber, n * Ω)
-          ind = findfirst(i == (Unsigned(p), dfdv) for i in LMV.PARALLEL_TUPLE_ORDER)
-          beamanswer = beamanswertuple[ind]
-          numeanswer = LMV.parallel(numerical, ω, wavenumber, n * Ω, Unsigned(p), dfdv)
-          diff = (beamanswer - numeanswer) ./ norm(beamanswer)
-          if !isapprox(beamanswer, numeanswer, rtol=1000sqrt(eps()), atol=100eps())
-            push!(fails, (ksign=ksign, γsign=γsign, vdsign=vdsign, ω=ω,
-                          wavenumber=wavenumber, n=n, p=p, dfdv=dfdv, diff=diff))
+      vth = thermalspeed(1.0e4, mi)
+      vd = rand() * 4 * vth * vdsign
+      numerical = FParallelNumerical(vth, vd)
+      beam = FBeam(vth, vd)
+      for dfdv ∈ (true, false), p ∈ powers
+        @testset "ksign=$ksign, γsign=$γsign, vdsign=$vdsign, dfdv=$dfdv, p=$p" begin
+          for i ∈ 1:100
+            n = rand(-5:5)
+            ω = Ω / Va * Complex(rand(), γsign * rand() / 100)
+            kpara = rand() * 10 * Ω / Va * ksign
+            wavenumber = Wavenumber(kpara, 0.0)
+            dfdv && (p >= 2) && continue
+            beamanswertuple = LMV.parallel(beam, ω, wavenumber, n * Ω)
+            ind = findfirst(i == (Unsigned(p), dfdv) for i in LMV.PARALLEL_TUPLE_ORDER)
+            beamanswer = beamanswertuple[ind]
+            numeanswer = LMV.parallel(numerical, ω, wavenumber, n * Ω, Unsigned(p), dfdv)
+            diff = (beamanswer - numeanswer) ./ norm(beamanswer)
+            if !isapprox(beamanswer, numeanswer, rtol=1000sqrt(eps()), atol=100eps())
+              push!(fails, (ksign=ksign, γsign=γsign, vdsign=vdsign, ω=ω,
+                            wavenumber=wavenumber, n=n, p=p, dfdv=dfdv, diff=diff))
+            end
+            @test beamanswer ≈ numeanswer rtol=100sqrt(eps()) atol=1000eps()
           end
-          @test beamanswer ≈ numeanswer rtol=100sqrt(eps()) atol=1000eps()
         end
       end
     end
@@ -52,27 +53,22 @@ const LMV = LinearMaxwellVlasov
 
   @testset "make sure @inferred passes for FBeam" begin
     ω = Ω / Va * rand(ComplexF64)
-    KPara = Ω / Va
-    inferred_false = true
-    inferred_true = true
+    kpara = Ω / Va
+    inferred = true
     vth = thermalspeed(1.0e4, mi)
     vd = (rand() - 0.5) * 8 * vth
+    wavenumber = Wavenumber(kpara, 0.0)
     numerical = FParallelNumerical(vth, vd)
     beam = FBeam(vth, vd)
     @test LMV.is_normalised(beam)
     for power ∈ (UInt64(0), UInt64(1))
       try
-        @inferred LMV.parallel(beam, ω, KPara, 3, Ω, power, false)
-      catch
-        inferred_false = false
+        @inferred LMV.parallel(beam, ω, wavenumber, 3 * Ω)
+      catch err
+        @info err
+        inferred = false
       end
-      try
-        @inferred LMV.parallel(beam, ω, KPara, 3, Ω, power, true)
-      catch
-        inferred_true = false
-      end
-      @test inferred_false
-      @test inferred_true
+      @test inferred
     end
   end
 

@@ -11,7 +11,11 @@ const PARALLEL_TUPLE_ORDER = ((UInt64(0), false),
                               (UInt64(0), true),
                               (UInt64(1), true)) # Don't change this order
 
-paralleltuple(f::F) where {F} = Tuple(f(i...) for i in PARALLEL_TUPLE_ORDER)
+paralleltuple(f::F) where {F} = (f(PARALLEL_TUPLE_ORDER[1]...),
+                                 f(PARALLEL_TUPLE_ORDER[2]...),
+                                 f(PARALLEL_TUPLE_ORDER[3]...),
+                                 f(PARALLEL_TUPLE_ORDER[4]...),
+                                 f(PARALLEL_TUPLE_ORDER[5]...))
 
 """
 Interface
@@ -58,7 +62,7 @@ The parallel integral of the Beam only requires an integral
 over a drifting Maxwellian subject to the relevant kernels. All this is
 calculated here.
 """
-function MaxwellianIntegralsParallel(vth, vd, ω, kz, nΩ)
+function MaxwellianIntegralsParallel(vth, vd, ω, kz, nΩ#=, ms=#)
   T = promote_type(typeof.((vth, vd, ω, kz, nΩ))...)
   if iszero(kz) # no need to do anything difficult!
     ∫⁰ = T(1 / (ω - nΩ))
@@ -79,7 +83,7 @@ function MaxwellianIntegralsParallel(vth, vd, ω, kz, nΩ)
     ∫¹ = - b * σ⁻¹
     ∫² = - c * σ⁻¹
   end
-  return MaxwellianIntegralsParallel(vth, vd, (∫⁰, ∫¹, ∫²), 2 / vth^2)
+  return MaxwellianIntegralsParallel(vth, vd, (∫⁰#= * ms=#, ∫¹#= * ms=#, ∫²), 2 / vth^2)
 end
 (mib::MaxwellianIntegralsParallel)(power::Integer) = mib.∫⁰¹²[power + 1]
 
@@ -100,7 +104,7 @@ end
 function parallel(Fz::FBeam, ω, k, nΩ)
   kz = k.parallel
   ms = k.multipliersign
-  mib = MaxwellianIntegralsParallel(Fz.vth, ms * Fz.vd, ω, kz, nΩ)
+  mib = MaxwellianIntegralsParallel(Fz.vth, Fz.vd * ms, ω, kz, nΩ#=, ms=#)
   return paralleltuple(mib)
 end
 

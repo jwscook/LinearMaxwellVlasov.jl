@@ -38,8 +38,9 @@ include("../species/NumericalSpecies.jl")
   for speciesk0vth in [(electron, vthe), (proton, vthi)]
     (s, vth) = (electron, vthe)
     (kz, ω, n, pow, diffbool) = (-69208.49198219362 - 0.0im, 1.2490402992112974e10 + 0.0im, 1, 2, false)
-    t1 = @elapsed output = LMV.parallel(s.Fz, ω, kz, n, s.Ω, UInt64(pow), diffbool)
-    analytical = para_integral(s, ω, kz, n, UInt64(pow), diffbool, vth)
+    k = Wavenumber(kz, 0.0)
+    t1 = @elapsed output = LMV.parallel(s.Fz, ω, k, n * s.Ω, UInt64(pow), diffbool)
+    analytical = para_integral(s, ω, k, n, UInt64(pow), diffbool, vth)
     @testset "test: kz=$(kz), ω=$(ω), n=$(n), pow=$(pow), diffbool=$(diffbool)" begin
       @test output ≈ analytical  atol=1.0e-2 rtol=1.0e-2
     end

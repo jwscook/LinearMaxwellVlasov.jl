@@ -74,9 +74,6 @@ function imagcontourdeformation(x, δ=1.0e-2)
   deformation = if !iszero(i) && θ >= δ
     zero(r)
   else
-    #atan((i - d) / r) = -δ
-    #(i - d) = -r * tan(δ)
-    #-abs(i - δ * (iszero(r) ? one(r) : abs(r)))
     -(tan(δ) * abs(r) + i)
   end
   @assert deformation <= 0 # deformation is always negative or zero

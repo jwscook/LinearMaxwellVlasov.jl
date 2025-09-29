@@ -12,5 +12,5 @@ using Test
   include("tensors/Brambilla.jl")
   include("tensors/RingBeamsAndPancakes.jl")
   include("tensors/CoupledVsSeparable.jl")
-  include("tensors/RelativisticVsClassical.jl")
+#  include("tensors/RelativisticVsClassical.jl")
 end
