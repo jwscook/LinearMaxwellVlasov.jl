@@ -38,6 +38,7 @@ struct FCoupledVelocityNumerical{T<:Function, U<:Number
     if autonormalise
       n = integrate(output)
       newf(vz, v⊥) = F(vz, v⊥) / n
+      newf(vz⊥) = newf(vz⊥[1], vz⊥[2])
       return new{typeof(newf),U}(newf, normalisation, lower, upper)
     else
       is_normalised(output) || throw(ArgumentError("F is not normalised"))
