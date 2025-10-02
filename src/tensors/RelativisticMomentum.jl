@@ -111,6 +111,8 @@ end
 function numerator(rh::RelativisticHarmonic, pz⊥)
   pz, p⊥ = pz⊥
 
+  pz *= nc.k.multipliersign
+
   kz = rh.kz
   k⊥ = rh.k⊥
   ω = rh.ω
@@ -158,10 +160,10 @@ function numerator(rh::RelativisticHarmonic, pz⊥)
 end
 (rh::RelativisticHarmonic)(pz⊥) = numerator(rh, pz⊥) ./ denominator(rh, pz⊥)
 
-function momentumpoles(rh::RelativisticHarmonic, p⊥)
-  return momentumpoles(rh, p⊥, rh.n)
-end
-function momentumpoles(ars::AbstractRelativisticStruct, p⊥, n)
+#function momentumpoles(rh::RelativisticHarmonic, p⊥, deformatoin)
+#  return momentumpoles(rh, p⊥, rh.n, deformation)
+#end
+function momentumpoles(ars::AbstractRelativisticStruct, p⊥, n, deformation, ms)
   kz = ars.kz
   ω = ars.ω
   Ω = ars.species.Ω
@@ -173,13 +175,13 @@ function momentumpoles(ars::AbstractRelativisticStruct, p⊥, n)
   pzroot1 = (-b + sqrt(b^2 - 4 * a * c)) / (2a)
   pzroot2 = (-b - sqrt(b^2 - 4 * a * c)) / (2a)
 
-  pz1 = Pole(pzroot1, kz)
+  pz1 = Pole(pzroot1, ms, deformation)
   output = Vector{typeof(pz1)}()
   if isapproxinteger(fa(ars, (pzroot1, p⊥)), 10000eps())
-    push!(output, Pole(pzroot1, kz))
+    push!(output, Pole(pzroot1, ms, deformation))
   end
   if isapproxinteger(fa(ars, (pzroot2, p⊥)), 10000eps())
-    push!(output, Pole(pzroot2, kz))
+    push!(output, Pole(pzroot2, ms, deformation))
   end
   return output
 end
@@ -189,6 +191,7 @@ function relativisticmomentum(S::CoupledRelativisticSpecies, C::Configuration)
   ω, Ω, m = C.frequency, S.Ω, S.m
   @assert !iszero(Ω)
   kz, k⊥ = para(C.wavenumber), perp(C.wavenumber)
+  ms = C.wavenumber.multipliersign
   @assert !iszero(k⊥) "Perpendicular wavenumber must not be zero"
   polesarereal = all(iszero, imag.((ω, kz, k⊥)))
 
@@ -198,11 +201,14 @@ function relativisticmomentum(S::CoupledRelativisticSpecies, C::Configuration)
 
   cubaatol = C.options.cubature_tol.abs
   cubartol = C.options.cubature_tol.rel
+  deformation = imagcontourdeformation(ω / kz)
 
   function integral2D()
     integrand.count[] = 0
     output, errorestimate = HCubature.hcubature(
-      UnitSemicircleIntegrandTransform(integrand, norm(S.F.normalisation)),
+      UnitSemicircleIntegrandTransform(
+        x->integrand((x[1] + im * deformation, x[2])),
+        norm(S.F.normalisation)),
       (0, -π/2), (1, π/2), initdiv=2,
       rtol=cubartol, atol=cubaatol, maxevals=C.options.cubature_maxevals)
     if C.options.erroruponcubaturenonconformance
@@ -219,7 +225,7 @@ function relativisticmomentum(S::CoupledRelativisticSpecies, C::Configuration)
     function allprincipals(n) # TODO remove probable type instability
       rh = RelativisticHarmonic(S, ω, kz, k⊥, n)
       pchar = S.m * real(ω / kz)
-      pzroots = momentumpoles(rh, p⊥, n)
+      pzroots = momentumpoles(rh, p⊥, n, deformation, ms)
       @assert length(pzroots) == 1
       function integrandpz(x)
         x *= pchar
@@ -227,10 +233,9 @@ function relativisticmomentum(S::CoupledRelativisticSpecies, C::Configuration)
       end
       objective = transformaboutroots(integrandpz, real(pole(pzroots[1])/pchar))
 
-      polefix = wavedirectionalityhandler(pzroots[1])
-      principal = polefix.(first(QuadGK.quadgk(objective, -bound, bound, order=7,
-        atol=C.options.quadrature_tol.abs, rtol=C.options.quadrature_tol.rel)))
-      principal = sign(real(kz)) .* real(principal) .+ im .* imag(principal)
+      principal = first(QuadGK.quadgk(objective,
+        -bound + im * deformation, bound + im * deformation, order=7,
+        atol=C.options.quadrature_tol.abs, rtol=C.options.quadrature_tol.rel))
 
       @assert !any(isnan, principal)# "principal = $principal"
       return principal
@@ -241,14 +246,12 @@ function relativisticmomentum(S::CoupledRelativisticSpecies, C::Configuration)
     integrandn = NewbergerRelativistic(S, ω, kz, k⊥)
     function alllocalresidues(n)
       integrandpz(x) = integrandn((x, p⊥))
-      p⊥roots = momentumpoles(integrandn, p⊥, n)
+      p⊥roots = momentumpoles(integrandn, p⊥, n, deformation, ms)
       function localresidue(pole)
-        polefix = wavedirectionalityhandler(pole)
         rpradius = abs(pole) * sqrt(eps())
         rp = residuepartadaptive(integrandpz, pole, rpradius, 64,
           C.options.summation_tol, C.options.residue_maxevals)
-        output1 = polefix.(residue(rp, polefix(pole)))
-        output1 = sign(real(kz)) .* real(output1) .+ im .* imag(output1)
+        output1 = residue(rp, pole)
         return output1
       end
       return mapreduce(localresidue, +, p⊥roots)

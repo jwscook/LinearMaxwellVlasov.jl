@@ -141,7 +141,11 @@ include("../species/NumericalSpecies.jl")
     for params ∈ all_pairs(ks, ωs, -1:1, 0:2, (true, false))
       (kz, ω, n, pow, diffbool) = params
       diffbool && abs(pow) == 2 && continue
-      t1 = @elapsed output = LMV.parallel(s.Fz, ω, kz, n, s.Ω, UInt64(pow), diffbool)
+      t1 = @elapsed output = try
+        LMV.parallel(s.Fz, ω, kz, n, s.Ω, UInt64(pow), diffbool)
+      catch
+        @show ω, kz, n, s.Ω, pow, diffbool
+      end
       analytical = para_integral(s, ω, kz, n, UInt64(pow), diffbool, vth)
       Base.isnan(analytical) && continue
       @testset "test: kz=$(kz), ω=$(ω), n=$(n), pow=$(pow), diffbool=$(diffbool)" begin

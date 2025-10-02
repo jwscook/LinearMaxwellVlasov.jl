@@ -24,8 +24,9 @@ function run()
   alpha_hot = SeparableVelocitySpecies(Πα, Ωα,
     FParallelNumerical(vαth, vαb),
     FPerpendicularNumerical(vαth, vα⊥))
+  K = LinearMaxwellVlasov.Wavenumber(parallel=KPara, perpendicular=NaN)
 
-  output = [LinearMaxwellVlasov.parallel(alpha_hot.Fz, ω, KPara, n, Ωα, p, ∂F∂v, tol)
+  output = [LinearMaxwellVlasov.parallel(alpha_hot.Fz, ω, K, n * Ωα, p, ∂F∂v, tol)
              for p in power]
   @test all(isfinite.(output))
 end

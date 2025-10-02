@@ -17,7 +17,7 @@ println("$(now()) $(@__FILE__)")
   include("./Integrals.jl")
   include("./Species.jl")
   include("./Plasmas.jl")
-  include("./Tensors.jl")
+  #include("./Tensors.jl")
 end
 
 

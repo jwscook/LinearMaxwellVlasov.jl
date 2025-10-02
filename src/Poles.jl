@@ -7,13 +7,14 @@ function Pole(pole::Number, multipliersign::Int)
   return Pole(pole, multipliersign, imagcontourdeformation(pole))
 end
 
-function Pole(ω::Number, kparallel::Number, n::Integer, Ω::Number,
+function Pole(ω::Number, kz::Number, n::Integer, Ω::Number,
     multipliersign::Int, deformation=imagcontourdeformation((ω - n * Ω) / kz))
   @assert real(ω) >= 0
-  @assert kparallel >= 0
-  return Pole((ω - n * Ω) / kparallel, multipliersign, deformation)
+  @assert kz >= 0
+  return Pole((ω - n * Ω) / kz, multipliersign, deformation)
 end
-Pole(ω, K::Wavenumber, n, Ω, deformation=nothing) = Pole(ω, parallel(K), n, Ω, K.multipliersign, deformation)
+Pole(ω, K::Wavenumber, n, Ω) = Pole(ω, parallel(K), n, Ω, K.multipliersign)
+Pole(ω, K::Wavenumber, n, Ω, deformation) = Pole(ω, parallel(K), n, Ω, K.multipliersign, deformation)
 
 for op ∈ (:abs, :conj, :real, :imag, :reim, :isreal, :float, :isfinite, :angle)
   @eval Base.$op(f::Pole) = $op(f.pole)
@@ -41,12 +42,12 @@ Dual(p::Pole, x) = Dual(p.pole, x)
 ...
 
 """
-function residue(principalpart, pole)
-  σ = residuesigma(pole)
-  output = im * (σ * π * principalpart)
-  iszero(σ) && return zero(output) # defend against overflow
-  return output
-end
+#function residue(principalpart, pole)
+#  σ = residuesigma(pole)
+#  output = im * (σ * π * principalpart)
+#  iszero(σ) && return zero(output) # defend against overflow
+#  return output
+#end
 
 function residue(numerator, pole::Number, deformation::Real)
   principalpart = numerator(pole)
@@ -68,16 +69,21 @@ function residuesigma(pole::Number)
 end
 residuesigma(pole::Pole) = residuesigma(pole.pole - im * pole.deformation)
 
-function imagcontourdeformation(x, δ=1.0e-2)
+function imagcontourdeformation(x, θ=1.0e-6)
   r, i = reim(x)
-  θ = abs(angle(Complex(r, i)))
-  deformation = if !iszero(i) && θ >= δ
+  deformation = if (!iszero(i) && abs(angle(x)) >= θ)
     zero(r)
+  elseif iszero(x)
+    -one(r)
+  elseif isfinite(r) && isfinite(i)
+    -(tan(θ) * abs(r) + i)
+  elseif !isfinite(r) && isfinite(i)
+    -(tan(θ) + abs(i))
   else
-    -(tan(δ) * abs(r) + i)
+    -one(r)
   end
-  @assert deformation <= 0 # deformation is always negative or zero
-  @assert !iszero(i + deformation) "x, δ, deformation = $x, $δ, $deformation"
+  @assert deformation <= 0  "x, θ, deformation = $x, $θ, $deformation"
+  @assert !iszero(i + deformation) "x, θ, deformation = $x, $θ, $deformation"
   return deformation
 end
 

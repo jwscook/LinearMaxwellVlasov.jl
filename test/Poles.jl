@@ -60,7 +60,9 @@ end
     end
   end
 end
-
+@testset "imagcontourdeformation" begin
+ @assert LMV.imagcontourdeformation(Inf + NaN*im) <= 0
+end
 @testset "integral contour deformation" begin
   numerator(x) = exp(-x*x) / sqrt(π)
   foobles(x, z) = numerator(x) ./ (x - z)

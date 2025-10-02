@@ -22,37 +22,49 @@ end
   function paralleltest(ω, K, n, Ω, pow, dFdv, vd, vth)
     Bb = FBeam(vth, vd)
     Db = FParallelDiracDelta(vd)
+    resonance = (real(ω) - n * Ω) / real(K.parallel) == vd
+    @testset "kz=$(K.parallel * K.multipliersign), ω=$ω,pow=$(pow), dFdv=$(dFdv), resonance=$resonance" begin
     try
       resultBb = LMV.parallel(Bb, ω, K, n, Ω, pow, dFdv)
       isnan(resultBb) && return
-      resultDb = @inferred LMV.parallel(Db, ω, K, n, Ω, pow, dFdv)
-      @test resultBb ≈ resultDb rtol=reltol atol=0
+      resultDb = @inferred LMV.parallel(Db, ω, K, n*Ω, pow, dFdv)
+      if isfinite(resultBb)
+        @test resultBb ≈ resultDb rtol=reltol atol=0
+      end
     catch e
       @warn e
       @test false
+    end
     end
   end
 
   ωTs = (Float64, ComplexF64)
   Ks = (0.0, -1.0, 1.0)
   ns = -1:1
-  pows = Unsigned.(0:1)
-  for (ωT, K, n, pow, dFdv) ∈ all_pairs(ωTs, Ks, ns, pows, (true, false))
+  pows = Unsigned.(0:2)
+  for (ωT, kz, n, pow, dFdv) ∈ all_pairs(ωTs, Ks, ns, pows, (true, false))
     vth = 2 * rand() * smallness
     vd = myrand(Float64)
     ω = myrand(ωT)
     Ω = myrand(Float64)
+    K = LMV.Wavenumber(parallel=kz, perpendicular=NaN)
+    pow == 2  && dFdv && continue
     paralleltest(ω, K, n, Ω, pow, dFdv, vd, vth)
   end
   Ω = rand()
-  ω = 1.5 * Ω + im
   vth = 2 * smallness
-  K = myrand(Float64)
-  vd = real(ω) / K
-  # this is what this test is about, so error if wrong:
-  @assert LMV.Pole(real(ω), Wavenumber(kz=K, k⊥=0), 0, Ω) - vd == 0
-  paralleltest(ω, K, 0, Ω, UInt64(1), false, vd, vth)
-  paralleltest(ω, K, 0, Ω, UInt64(1), true, vd, vth)
+  for kz in (-2.0, 2.0), ω in (1.5Ω + im, 1.5Ω - im)
+    K = LMV.Wavenumber(parallel=kz, perpendicular=NaN)
+    vd = real(ω) / kz
+    # this is what this test is about, so error if wrong:
+    p = (ω - 0 * Ω) / kz 
+    @assert real(p) == vd "p, vd = $p, $vd"
+    paralleltest(ω, K, 0, Ω, UInt64(0), false, vd, vth)
+    paralleltest(ω, K, 0, Ω, UInt64(0), true, vd, vth)
+    paralleltest(ω, K, 0, Ω, UInt64(1), false, vd, vth)
+    paralleltest(ω, K, 0, Ω, UInt64(1), true, vd, vth)
+    paralleltest(ω, K, 0, Ω, UInt64(2), false, vd, vth)
+  end
 end
 
 @testset "Perpendicular" begin

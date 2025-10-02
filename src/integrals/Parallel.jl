@@ -40,12 +40,12 @@ Landau damping, so this case is made separate, as is easier to deal with.
 function parallel(Fz::AbstractFParallelNumerical, ω::Number, k::Wavenumber,
     nΩ::Real, power::Unsigned, ∂F∂v::Bool, tol::Tolerance=Tolerance())
   kz = parallel(k)
-  pole = Pole((ω - nΩ) / kz, k.multipliersign)
-  V = complex(typeof(pole.pole)) # to get type stability
+  V = complex(promote_type(typeof.((ω, kz, nΩ))...)) # to get type stability
   pkn = ParallelKernelNumerator(power)
   return if iszero(kz)
     integrate(Fz, pkn, ∂F∂v, tol) / V(nΩ - ω)
   else
+    pole = Pole((ω - nΩ) / kz, k.multipliersign)
     integrate(Fz, pkn, pole, ∂F∂v, tol) / V(kz)
   end
 end
@@ -55,6 +55,7 @@ struct MaxwellianIntegralsParallel{T, U, V}
   vd::U
   ∫⁰¹²::NTuple{3, V}
   vth⁻²2::T
+  multipliersign::Int
 end
 
 """
@@ -62,7 +63,7 @@ The parallel integral of the Beam only requires an integral
 over a drifting Maxwellian subject to the relevant kernels. All this is
 calculated here.
 """
-function MaxwellianIntegralsParallel(vth, vd, ω, kz, nΩ#=, ms=#)
+function MaxwellianIntegralsParallel(vth, vd, ω, kz, nΩ, ms)
   T = promote_type(typeof.((vth, vd, ω, kz, nΩ))...)
   if iszero(kz) # no need to do anything difficult!
     ∫⁰ = T(1 / (ω - nΩ))
@@ -83,7 +84,7 @@ function MaxwellianIntegralsParallel(vth, vd, ω, kz, nΩ#=, ms=#)
     ∫¹ = - b * σ⁻¹
     ∫² = - c * σ⁻¹
   end
-  return MaxwellianIntegralsParallel(vth, vd, (∫⁰#= * ms=#, ∫¹#= * ms=#, ∫²), 2 / vth^2)
+  return MaxwellianIntegralsParallel(vth, vd, (∫⁰, ∫¹, ∫²), 2 / vth^2, ms)
 end
 (mib::MaxwellianIntegralsParallel)(power::Integer) = mib.∫⁰¹²[power + 1]
 
@@ -94,6 +95,7 @@ function (mib::MaxwellianIntegralsParallel)(power::Unsigned, ∂F∂v::Bool)
     output -= mib(power + 1)
     output *= mib.vth⁻²2
   end
+  isodd(power + ∂F∂v) && (output *= mib.multipliersign)
   return output
 end
 
@@ -101,10 +103,10 @@ function parallel(S::T, C::Configuration, n::Int
     ) where {T⊥, Tz<:FBeam, T<:AbstractSeparableVelocitySpecies{Tz, T⊥}}
   return parallel(S.Fz, C.frequency, C.wavenumber, n * S.Ω)
 end
-function parallel(Fz::FBeam, ω, k, nΩ)
+function parallel(Fz::FBeam, ω, k::Wavenumber, nΩ)
   kz = k.parallel
   ms = k.multipliersign
-  mib = MaxwellianIntegralsParallel(Fz.vth, Fz.vd * ms, ω, kz, nΩ#=, ms=#)
+  mib = MaxwellianIntegralsParallel(Fz.vth, Fz.vd * ms, ω, kz, nΩ, ms)
   return paralleltuple(mib)
 end
 

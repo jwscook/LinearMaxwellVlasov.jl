@@ -1,11 +1,11 @@
 using Dates
 println("$(now()) $(@__FILE__)")
 
+include("../species/NumericalSpecies.jl")
 using Test, Statistics
 using LinearMaxwellVlasov
 const LMV = LinearMaxwellVlasov
 
-include("../species/NumericalSpecies.jl")
 
 @testset "Parallel unittest 3" begin
 
@@ -27,8 +27,9 @@ include("../species/NumericalSpecies.jl")
     p = 0
     for n ∈ (0,)#-20:20
       for ω ∈ (1.0 + 0*im, 1.0 + 0.1*im, 1.0 - 0.1im), kz in (1.0 + 0*im, 1.0 + 0.1*im, 1.0 - 0.1im)
-        a = LMV.parallel(twosrb.Fz,  ω, kz, n, Ω, Unsigned(p), false)
-        b = LMV.parallel(twosnum.Fz, ω, kz, n, Ω, Unsigned(p), false)
+        K = LMV.Wavenumber(kz, NaN)
+        a = parallel(twosrb.Fz,  ω, K, n * Ω, Unsigned(p), false)
+        b = LMV.parallel(twosnum.Fz, ω, K, n * Ω, Unsigned(p), false)
         @assert twosrb.Fz((ω - n* Ω) / kz) ≈ twosnum.Fz((ω - n* Ω) / kz)
         realratios += abs((real(a) - real(b)) / real(a))
         imagratios += abs((imag(a) - imag(b)) / imag(a))
