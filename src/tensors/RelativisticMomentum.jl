@@ -17,6 +17,11 @@ function fa(ars::ARS, pz⊥)
   return (fγ(ars, pz⊥) * ars.ω - ars.kz * pz⊥[1] / ars.species.m) / ars.species.Ω
 end
 
+function numerator(nr::NewbergerRelativistic, pz⊥)
+  a = fa(nr, pz⊥)
+  sinπa = sin(π * a)
+  return nr(pz⊥) * sinπa
+end
 function (nr::NewbergerRelativistic)(pz⊥)
   nr.count[] += 1
   pz, p⊥ = pz⊥
@@ -45,18 +50,13 @@ function (nr::NewbergerRelativistic)(pz⊥)
   end
   @assert !isinteger(a) (a, πa_sinπa, pz)
 
-  Ja, J_a, Jad, J_ad = if real(a) > 0
-    Ja, J_a, Ja_1, J_a1 = besselj_v([a, -a, a - 1, -a + 1], γξ⊥)
-    (Ja, J_a, Ja_1 - Ja * a / γξ⊥, -J_a * a / γξ⊥ - J_a1)
-  else
-    Ja, J_a, Ja1, J_a_1 = besselj_v([a, -a, a + 1, -a - 1], γξ⊥)
-    (Ja, J_a, Ja * a / γξ⊥ - Ja1, J_a_1 + J_a * a / γξ⊥)
-  end
-
-  @assert isfinite(Ja) Ja
-  @assert isfinite(J_a) J_a
-  @assert isfinite(Jad) Jad
-  @assert isfinite(J_ad) J_ad
+  Jadual, J_adual = besselj_v(MVector(a, -a), Dual(γξ⊥, 1))
+  Ja, Jad = DualNumbers.realpart(Jadual), DualNumbers.dualpart(Jadual)
+  J_a, J_ad = DualNumbers.realpart(J_adual), DualNumbers.dualpart(J_adual)
+  @assert isfinite(Ja)
+  @assert isfinite(J_a)
+  @assert isfinite(Jad)
+  @assert isfinite(J_ad)
 
   θF = p⊥ * dfdpz - pz * dfdp⊥
 
@@ -85,85 +85,81 @@ function (nr::NewbergerRelativistic)(pz⊥)
   @assert all(isfinite, Qij) (Qij, a, Ja, J_a, Jad, J_ad, dfdpz, dfdp⊥, π_sinπa, πa_sinπa)
   common = 2π * p⊥ * ω / Ω
   Qij .*= common
+
   return Qij
 end
 
-"""
-Relativestic dielectric tensor as a function of cyclotron harmonic
-This is only used for the principal part.
-"""
-struct RelativisticHarmonic{S, T, U, V} <: ARS 
-  species::S
-  ω::T
-  kz::U
-  k⊥::V
-  n::Int
-end
-
-function denominator(rh::RelativisticHarmonic, pz⊥)
-  pz, p⊥ = pz⊥
-  γ = fγ(rh, pz⊥)
-  output = γ * rh.ω - rh.kz * pz / rh.species.m - rh.n * rh.species.Ω
-  iszero(output) && (output += convert(eltype(output), Inf))
-  return output
-end
-
-function numerator(rh::RelativisticHarmonic, pz⊥)
-  pz, p⊥ = pz⊥
-
-  pz *= nc.k.multipliersign
-
-  kz = rh.kz
-  k⊥ = rh.k⊥
-  ω = rh.ω
-  m = rh.species.m
-  Ω = rh.species.Ω
-  n = rh.n
-  nΩ = n * Ω
-
-  # Following Brambilla's book
-  γξ⊥ = p⊥ * k⊥ / m / Ω
-
-  Jn₋ = besselj(n - 1, γξ⊥)
-  Jn₊ = iszero(n) ? -Jn₋ : besselj(n + 1, γξ⊥)
-  Jn = iszero(n) ? besselj(n, γξ⊥) : γξ⊥ / 2n * (Jn₋ + Jn₊)
-  Jnd = (Jn₋ - Jn₊) / 2
-
-  nJn_γξ⊥ = iszero(γξ⊥) ? typeof(γξ⊥)(isone(abs(n)) / 2) : n * Jn / γξ⊥
-
-  dfdpz = DualNumbers.dualpart(rh.species(Dual(pz, 1), p⊥))
-  dfdp⊥ = DualNumbers.dualpart(rh.species(pz, Dual(p⊥, 1)))
-
-  γ = fγ(rh, pz⊥)
-
-  @cse @muladd begin
-    θF = p⊥ * dfdpz - pz * dfdp⊥
-
-    O⊥p⊥ = 2π * p⊥ * (ω * dfdp⊥ + kz / m / γ * θF)
-    Ob1p⊥ = 2π * p⊥ * (p⊥ * ω * dfdpz - nΩ / γ * θF)
-    Ob2p⊥ = 2π * (p⊥ * pz * ω * dfdpz - nΩ / γ * pz * θF)
-
-    m11 = nJn_γξ⊥^2 * p⊥ * O⊥p⊥
-    m12 = im * nJn_γξ⊥ * Jnd * p⊥ * O⊥p⊥
-    m13 = nJn_γξ⊥ * Jn * Ob1p⊥
-    m21 = -m12 # Onsager
-    m22 = Jnd^2 * p⊥ * O⊥p⊥
-    m23 = -im * Jn * Jnd * Ob1p⊥
-    # m31 = nJn_γξ⊥ * Jn * pz * O⊥p⊥
-    m31 = m13 # Onsager
-    # m32 = im * Jn * Jnd * pz * O⊥p⊥
-    m32 = -m23 # Onsager
-    m33 = Jn^2 * Ob2p⊥
-  end
-
-  return @SArray [m11 m12 m13; m21 m22 m23; m31 m32 m33]
-end
-(rh::RelativisticHarmonic)(pz⊥) = numerator(rh, pz⊥) ./ denominator(rh, pz⊥)
-
-#function momentumpoles(rh::RelativisticHarmonic, p⊥, deformatoin)
-#  return momentumpoles(rh, p⊥, rh.n, deformation)
+#"""
+#Relativestic dielectric tensor as a function of cyclotron harmonic
+#This is only used for the principal part.
+#"""
+#struct RelativisticHarmonic{S, T, U, V} <: ARS 
+#  species::S
+#  ω::T
+#  kz::U
+#  k⊥::V
+#  n::Int
 #end
-function momentumpoles(ars::AbstractRelativisticStruct, p⊥, n, deformation, ms)
+#
+#function denominator(rh::RelativisticHarmonic, pz⊥)
+#  pz, p⊥ = pz⊥
+#  γ = fγ(rh, pz⊥)
+#  output = γ * rh.ω - rh.kz * pz / rh.species.m - rh.n * rh.species.Ω
+#  iszero(output) && (output += convert(eltype(output), Inf))
+#  return output
+#end
+#
+#function numerator(rh::RelativisticHarmonic, pz⊥)
+#  pz, p⊥ = pz⊥
+#
+#  kz = rh.kz
+#  k⊥ = rh.k⊥
+#  ω = rh.ω
+#  m = rh.species.m
+#  Ω = rh.species.Ω
+#  n = rh.n
+#  nΩ = n * Ω
+#
+#  # Following Brambilla's book
+#  γξ⊥ = p⊥ * k⊥ / m / Ω
+#
+#  Jn₋ = besselj(n - 1, γξ⊥)
+#  Jn₊ = iszero(n) ? -Jn₋ : besselj(n + 1, γξ⊥)
+#  Jn = iszero(n) ? besselj(n, γξ⊥) : γξ⊥ / 2n * (Jn₋ + Jn₊)
+#  Jnd = (Jn₋ - Jn₊) / 2
+#
+#  nJn_γξ⊥ = iszero(γξ⊥) ? typeof(γξ⊥)(isone(abs(n)) / 2) : n * Jn / γξ⊥
+#
+#  dfdpz = DualNumbers.dualpart(rh.species(Dual(pz, 1), p⊥))
+#  dfdp⊥ = DualNumbers.dualpart(rh.species(pz, Dual(p⊥, 1)))
+#
+#  γ = fγ(rh, pz⊥)
+#
+#  @cse @muladd begin
+#    θF = p⊥ * dfdpz - pz * dfdp⊥
+#
+#    O⊥p⊥ = 2π * p⊥ * (ω * dfdp⊥ + kz / m / γ * θF)
+#    Ob1p⊥ = 2π * p⊥ * (p⊥ * ω * dfdpz - nΩ / γ * θF)
+#    Ob2p⊥ = 2π * (p⊥ * pz * ω * dfdpz - nΩ / γ * pz * θF)
+#
+#    m11 = nJn_γξ⊥^2 * p⊥ * O⊥p⊥
+#    m12 = im * nJn_γξ⊥ * Jnd * p⊥ * O⊥p⊥
+#    m13 = nJn_γξ⊥ * Jn * Ob1p⊥
+#    m21 = -m12 # Onsager
+#    m22 = Jnd^2 * p⊥ * O⊥p⊥
+#    m23 = -im * Jn * Jnd * Ob1p⊥
+#    # m31 = nJn_γξ⊥ * Jn * pz * O⊥p⊥
+#    m31 = m13 # Onsager
+#    # m32 = im * Jn * Jnd * pz * O⊥p⊥
+#    m32 = -m23 # Onsager
+#    m33 = Jn^2 * Ob2p⊥
+#  end
+#
+#  return @SArray [m11 m12 m13; m21 m22 m23; m31 m32 m33]
+#end
+#(rh::RelativisticHarmonic)(pz⊥) = numerator(rh, pz⊥) ./ denominator(rh, pz⊥)
+
+function momentumpoles(ars::AbstractRelativisticStruct, p⊥, n, deformation)
   kz = ars.kz
   ω = ars.ω
   Ω = ars.species.Ω
@@ -175,23 +171,24 @@ function momentumpoles(ars::AbstractRelativisticStruct, p⊥, n, deformation, ms
   pzroot1 = (-b + sqrt(b^2 - 4 * a * c)) / (2a)
   pzroot2 = (-b - sqrt(b^2 - 4 * a * c)) / (2a)
 
-  pz1 = Pole(pzroot1, ms, deformation)
+  causalsign = real(kz) >= 0 ? 1 : -1
+  pz1 = Pole(pzroot1, causalsign, deformation)
   output = Vector{typeof(pz1)}()
   if isapproxinteger(fa(ars, (pzroot1, p⊥)), 10000eps())
-    push!(output, Pole(pzroot1, ms, deformation))
+    push!(output, Pole(pzroot1, causalsign, deformation))
   end
   if isapproxinteger(fa(ars, (pzroot2, p⊥)), 10000eps())
-    push!(output, Pole(pzroot2, ms, deformation))
+    push!(output, Pole(pzroot2, causalsign, deformation))
   end
   return output
 end
 
 
 function relativisticmomentum(S::CoupledRelativisticSpecies, C::Configuration)
-  ω, Ω, m = C.frequency, S.Ω, S.m
+  ω, Ω = C.frequency, S.Ω
   @assert !iszero(Ω)
   kz, k⊥ = para(C.wavenumber), perp(C.wavenumber)
-  ms = C.wavenumber.multipliersign
+
   @assert !iszero(k⊥) "Perpendicular wavenumber must not be zero"
   polesarereal = all(iszero, imag.((ω, kz, k⊥)))
 
@@ -201,7 +198,7 @@ function relativisticmomentum(S::CoupledRelativisticSpecies, C::Configuration)
 
   cubaatol = C.options.cubature_tol.abs
   cubartol = C.options.cubature_tol.rel
-  deformation = imagcontourdeformation(ω / kz)
+  deformation = imagcontourdeformation(S.m * ω / kz, real(kz) >= 0 ? 1 : -1)
 
   function integral2D()
     integrand.count[] = 0
@@ -209,7 +206,7 @@ function relativisticmomentum(S::CoupledRelativisticSpecies, C::Configuration)
       UnitSemicircleIntegrandTransform(
         x->integrand((x[1] + im * deformation, x[2])),
         norm(S.F.normalisation)),
-      (0, -π/2), (1, π/2), initdiv=2,
+      (0, -π/2), (1, π/2), initdiv=16,
       rtol=cubartol, atol=cubaatol, maxevals=C.options.cubature_maxevals)
     if C.options.erroruponcubaturenonconformance
       @assert (integrand.count[] < C.options.cubature_maxevals) ||
@@ -221,39 +218,19 @@ function relativisticmomentum(S::CoupledRelativisticSpecies, C::Configuration)
   outertol = C.options.quadrature_tol.rel
   innertol = outertol / 10 # inner loop has higher accuracy than outer
 
-  function principal(p⊥) # TODO remove probable type instability
-    function allprincipals(n) # TODO remove probable type instability
-      rh = RelativisticHarmonic(S, ω, kz, k⊥, n)
-      pchar = S.m * real(ω / kz)
-      pzroots = momentumpoles(rh, p⊥, n, deformation, ms)
-      @assert length(pzroots) == 1
-      function integrandpz(x)
-        x *= pchar
-        return rh((x, p⊥)) .* pchar
-      end
-      objective = transformaboutroots(integrandpz, real(pole(pzroots[1])/pchar))
-
-      principal = first(QuadGK.quadgk(objective,
-        -bound + im * deformation, bound + im * deformation, order=7,
-        atol=C.options.quadrature_tol.abs, rtol=C.options.quadrature_tol.rel))
-
-      @assert !any(isnan, principal)# "principal = $principal"
-      return principal
-    end
-    return converge(allprincipals, C.options.summation_tol)
-  end
   function relativisticresidue(p⊥)
     integrandn = NewbergerRelativistic(S, ω, kz, k⊥)
     function alllocalresidues(n)
       integrandpz(x) = integrandn((x, p⊥))
-      p⊥roots = momentumpoles(integrandn, p⊥, n, deformation, ms)
+      p⊥roots = momentumpoles(integrandn, p⊥, n, deformation)
       function localresidue(pole)
-        rpradius = abs(pole) * sqrt(eps())
-        rp = residuepartadaptive(integrandpz, pole, rpradius, 64,
-          C.options.summation_tol, C.options.residue_maxevals)
-        output1 = residue(rp, pole)
+        @assert pole.deformation == deformation
+        laurentnumerator(x) = -(-1)^n * Ω * numerator(integrandn, (x, p⊥)) / kz / π
+        output1 = residue(laurentnumerator, pole)
+        @assert !any(isnan, output1)
         return output1
       end
+
       return mapreduce(localresidue, +, p⊥roots)
     end
     output = converge(alllocalresidues, C.options.summation_tol)
@@ -272,8 +249,8 @@ function relativisticmomentum(S::CoupledRelativisticSpecies, C::Configuration)
       rtol=outertol))
   end
 
-  result = polesarereal ? integralsnested1D(principal) : integral2D()
-  result += integralsnested1D(relativisticresidue, norm(result))
+  result = integral2D()
+#  result += integralsnested1D(relativisticresidue, norm(result))
   return result
 end
 

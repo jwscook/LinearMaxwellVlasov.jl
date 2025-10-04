@@ -10,13 +10,11 @@ Construct with parallel and wavenumber components, or by keyword arguement pairs
 struct Wavenumber{T<:Number, U<:Number}
   parallel::T
   perpendicular::U
-  multipliersign::Int
+  causalsign::Int
   function Wavenumber(parallel::T, perpendicular::U) where {T<:Number, U<:Number}
-    multipliersign = real(parallel) >= 0 ? 1 : -1
-    @assert real(parallel) * multipliersign >= 0
-    parallel *= multipliersign
-    @assert real(parallel) >= 0
-    return new{T, U}(parallel, perpendicular, multipliersign)
+    causalsign = real(parallel) >= 0 ? 1 : -1
+    @assert real(parallel) * causalsign >= 0
+    return new{T, U}(parallel, perpendicular, causalsign)
   end
 end
 function Wavenumber(;kwargstuple...)
@@ -46,7 +44,7 @@ end
 @inline parallel(K::Wavenumber) = K.parallel
 @inline perpendicular(K::Wavenumber) = K.perpendicular
 
-@inline propagationangle(K::Wavenumber) = atan(K.perpendicular, K.parallel * K.multipliersign)
+@inline propagationangle(K::Wavenumber) = atan(K.perpendicular, K.parallel)
 
 Base.angle(K::Wavenumber) = propagationangle(K)
 

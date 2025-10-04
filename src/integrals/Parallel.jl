@@ -45,7 +45,7 @@ function parallel(Fz::AbstractFParallelNumerical, ω::Number, k::Wavenumber,
   return if iszero(kz)
     integrate(Fz, pkn, ∂F∂v, tol) / V(nΩ - ω)
   else
-    pole = Pole((ω - nΩ) / kz, k.multipliersign)
+    pole = Pole((ω - nΩ) / kz, k.causalsign)
     integrate(Fz, pkn, pole, ∂F∂v, tol) / V(kz)
   end
 end
@@ -55,7 +55,6 @@ struct MaxwellianIntegralsParallel{T, U, V}
   vd::U
   ∫⁰¹²::NTuple{3, V}
   vth⁻²2::T
-  multipliersign::Int
 end
 
 """
@@ -63,8 +62,9 @@ The parallel integral of the Beam only requires an integral
 over a drifting Maxwellian subject to the relevant kernels. All this is
 calculated here.
 """
-function MaxwellianIntegralsParallel(vth, vd, ω, kz, nΩ, ms)
+function MaxwellianIntegralsParallel(vth, vd, ω, kz, nΩ)
   T = promote_type(typeof.((vth, vd, ω, kz, nΩ))...)
+  causalconj(z) = real(kz) >= 0 ? z : conj(z)
   if iszero(kz) # no need to do anything difficult!
     ∫⁰ = T(1 / (ω - nΩ))
     ∫¹ = T(vd / (ω - nΩ))
@@ -72,6 +72,7 @@ function MaxwellianIntegralsParallel(vth, vd, ω, kz, nΩ, ms)
   else
     σ⁻¹ = 1 / (kz * vth)
     @muladd z = (ω - kz * vd - nΩ) * σ⁻¹
+    z = causalconj(z)
     Z0 = plasma_dispersion_function(z, UInt64(0))
     Z1 = plasma_dispersion_function(z, UInt64(1), Z0)
     Z2 = plasma_dispersion_function(z, UInt64(2), Z1)
@@ -80,11 +81,11 @@ function MaxwellianIntegralsParallel(vth, vd, ω, kz, nΩ, ms)
       b = Z0 * vd + Z1 * vth
       c = Z0 * vd^2 + Z1 * 2vth * vd + Z2 * vth^2
     end
-    ∫⁰ = - a * σ⁻¹
-    ∫¹ = - b * σ⁻¹
-    ∫² = - c * σ⁻¹
+    ∫⁰ = - causalconj(a) * σ⁻¹
+    ∫¹ = - causalconj(b) * σ⁻¹
+    ∫² = - causalconj(c) * σ⁻¹
   end
-  return MaxwellianIntegralsParallel(vth, vd, (∫⁰, ∫¹, ∫²), 2 / vth^2, ms)
+  return MaxwellianIntegralsParallel(vth, vd, (∫⁰, ∫¹, ∫²), 2 / vth^2)
 end
 (mib::MaxwellianIntegralsParallel)(power::Integer) = mib.∫⁰¹²[power + 1]
 
@@ -95,7 +96,6 @@ function (mib::MaxwellianIntegralsParallel)(power::Unsigned, ∂F∂v::Bool)
     output -= mib(power + 1)
     output *= mib.vth⁻²2
   end
-  isodd(power + ∂F∂v) && (output *= mib.multipliersign)
   return output
 end
 
@@ -104,9 +104,8 @@ function parallel(S::T, C::Configuration, n::Int
   return parallel(S.Fz, C.frequency, C.wavenumber, n * S.Ω)
 end
 function parallel(Fz::FBeam, ω, k::Wavenumber, nΩ)
-  kz = k.parallel
-  ms = k.multipliersign
-  mib = MaxwellianIntegralsParallel(Fz.vth, Fz.vd * ms, ω, kz, nΩ, ms)
+  kz = parallel(k)
+  mib = MaxwellianIntegralsParallel(Fz.vth, Fz.vd, ω, kz, nΩ)
   return paralleltuple(mib)
 end
 
@@ -119,8 +118,7 @@ function (::Type{CacheKeyAndOp{ParallelCache}})(species::AbstractKineticSpecies,
     config::Configuration, n::Int)
   ω = config.frequency
   kz = parallel(config.wavenumber)
-  ms = config.wavenumber.multipliersign
-  hashsig = (kz, ms, ω - n * species.Ω, uniqueid(config.options))
+  hashsig = (kz, ω - n * species.Ω, uniqueid(config.options))
   key = foldr(hash, hashsig; init=UInt64(2^31 + Int32(typeof(hashsig).hash)))
   return key, CacheOp{ParallelCacheOp}(false)
 end

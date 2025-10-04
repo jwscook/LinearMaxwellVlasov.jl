@@ -40,13 +40,12 @@ Calculate the parallel integral with principal part and residue
 """
 function integrate(f::FParallelDiracDelta, numerator::T, pole::Pole,
     ∂F∂v::Bool, _::Tolerance=Tolerance()) where {T<:Function}
-  ms = pole.multipliersign
-  vd = f.v_drift * ms # only need to flip this sign
-  integrand(v) = numerator(ms * v) / (v - pole)
-  output = ∂F∂v ? -derivative(integrand, vd) * ms : integrand(vd)
-  if real(pole) == vd # need to test this to make sure we've got the right signs
-    f_residue(v) = ∂F∂v ? -derivative(numerator, v) * ms : numerator(v)
-    output += residue(f_residue, pole.pole, 0.0)
+  vd = f.v_drift
+  integrand(v) = numerator(v) / (v - pole)
+  output = ∂F∂v ? -derivative(integrand, vd) : integrand(vd)
+  if real(pole) == vd
+    f_residue(v) = ∂F∂v ? -derivative(numerator, v) : numerator(v)
+    output += residue(f_residue, pole)
   end
   return output
 end

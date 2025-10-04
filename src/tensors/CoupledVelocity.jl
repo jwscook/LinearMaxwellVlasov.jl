@@ -15,7 +15,6 @@ NewbergerClassical(s, ω, k::Wavenumber) = NewbergerClassical(s, ω, k, Ref(0))
 (nc::NewbergerClassical)(vz, v⊥) = numerator(nc, vz, v⊥) / denominator(nc, vz, v⊥)
 
 function denominator(nc::NewbergerClassical, vz, v⊥)
-  # Don't multiply by the sign changer vz *= nc.k.multipliersign
   a = pseudoharmonic(nc, vz)
   sinπa = sinpi(a)
   @assert isfinite(sinπa) "a = $a, vz = $vz"
@@ -33,13 +32,10 @@ end
 function numerator(nc::NewbergerClassical, vz, v⊥)
   nc.count[] += 1
 
-  # now change the sign if required
-#  ms = nc.k.multipliersign
+  a = pseudoharmonic(nc, vz)
+  sinπa = sinpi(a)
+
   kz = para(nc.k)
-  @assert kz >= 0
-  
-  a = pseudoharmonic(nc, vz) # vz sign unchanged
-  sinπa = sinpi(a) # vz sign unchanged
 
   S = nc.species
   Ω = S.Ω
@@ -94,19 +90,18 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
   cubartol = C.options.cubature_tol.rel
   nc = NewbergerClassical(S, ω, C.wavenumber)
 
-  deformation = imagcontourdeformation(ω / kz)
+  deformation = imagcontourdeformation(ω / kz, real(kz) >= 0 ? 1 : -1)
 
   function robustintegral2D()
     nc.count[] = 0
-    ms = C.wavenumber.multipliersign
 
     t1 = @elapsed output, integral2Derrorestimate = if S.F.lower == 0
-      HCubature.hcubature(vz⊥ -> nc((vz⊥[1]#= * ms=# + im * deformation, vz⊥[2])),
+      HCubature.hcubature(vz⊥ -> nc((vz⊥[1] + im * deformation, vz⊥[2])),
         (-4S.F.upper, 0.0), (4S.F.upper, 4S.F.upper), initdiv=16,
         rtol=cubartol, atol=cubaatol, maxevals=C.options.cubature_maxevals)
     else
       @assert S.F.lower > 0
-      ∫dvrdθ(vrθ) = vrθ[1] * nc(parallelperpfrompolar(vrθ)#= .* (ms, 1)=# + (im * deformation, zero(vrθ[2])))
+      ∫dvrdθ(vrθ) = vrθ[1] * nc(parallelperpfrompolar(vrθ) + (im * deformation, zero(vrθ[2])))
       HCubature.hcubature(∫dvrdθ,
         (S.F.lower/4, -π / 2), (4S.F.upper, π / 2), initdiv=16,
         rtol=cubartol, atol=cubaatol, maxevals=C.options.cubature_maxevals)
@@ -128,9 +123,8 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
   end
 
   function robustcoupledresidue(v⊥, ::Type{T0}, deformation)::T0 where T0
-    ms = C.wavenumber.multipliersign
     function allresidues(n)
-      pole = Pole(C.frequency, C.wavenumber, n, S.Ω, deformation)
+      pole = Pole(C.frequency, C.wavenumber, n, Ω, deformation)
       @assert pole.deformation == deformation
       laurentnumerator(x) = -(-1)^n * Ω * numerator(nc, x, v⊥) / kz / π
       output = residue(laurentnumerator, pole)

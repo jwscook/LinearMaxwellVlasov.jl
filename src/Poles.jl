@@ -1,20 +1,19 @@
 struct Pole{T<:Number, U<:Real} <: Number
   pole::T
-  multipliersign::Int
+  causalsign::Int
   deformation::U
 end
-function Pole(pole::Number, multipliersign::Int)
-  return Pole(pole, multipliersign, imagcontourdeformation(pole))
+function Pole(pole::Number, causalsign::Int)
+  return Pole(pole, causalsign, imagcontourdeformation(pole, causalsign))
 end
 
 function Pole(ω::Number, kz::Number, n::Integer, Ω::Number,
-    multipliersign::Int, deformation=imagcontourdeformation((ω - n * Ω) / kz))
+    causalsign::Int, deformation=imagcontourdeformation((ω - n * Ω) / kz, causalsign))
   @assert real(ω) >= 0
-  @assert kz >= 0
-  return Pole((ω - n * Ω) / kz, multipliersign, deformation)
+  return Pole((ω - n * Ω) / kz, causalsign, deformation)
 end
-Pole(ω, K::Wavenumber, n, Ω) = Pole(ω, parallel(K), n, Ω, K.multipliersign)
-Pole(ω, K::Wavenumber, n, Ω, deformation) = Pole(ω, parallel(K), n, Ω, K.multipliersign, deformation)
+Pole(ω, K::Wavenumber, n, Ω) = Pole(ω, parallel(K), n, Ω, K.causalsign)
+Pole(ω, K::Wavenumber, n, Ω, deformation) = Pole(ω, parallel(K), n, Ω, K.causalsign, deformation)
 
 for op ∈ (:abs, :conj, :real, :imag, :reim, :isreal, :float, :isfinite, :angle)
   @eval Base.$op(f::Pole) = $op(f.pole)
@@ -39,24 +38,15 @@ Dual(p::Pole, x) = Dual(p.pole, x)
 # Arguments
 - `principalpart`:
 - `pole::Number`:
+- `deformation::Real`:
 ...
 
 """
-#function residue(principalpart, pole)
-#  σ = residuesigma(pole)
-#  output = im * (σ * π * principalpart)
-#  iszero(σ) && return zero(output) # defend against overflow
-#  return output
-#end
-
-function residue(numerator, pole::Number, deformation::Real)
+function residue(numerator::F, pole::Pole) where {F<:Function}
   principalpart = numerator(pole)
-  σ = residuesigma(pole - im * deformation)
+  σ = residuesigma(pole)
   iszero(σ) && return zero(principalpart) # defend against overflow
   return im * (σ * π * principalpart)
-end
-function residue(numerator::F, p::Pole) where {F<:Function}
-  return residue(numerator, p.pole, p.deformation)
 end
 
 """
@@ -64,16 +54,21 @@ end
 
 Calculate the "sigma" factor of the residue
 """
-function residuesigma(pole::Number)
-  return imag(pole) < 0 ? 2 : imag(pole) == 0 ? 1 : 0
+function residuesigma(pole::Number, causalsign::Real)
+  @assert abs(causalsign) == 1
+  return if causalsign == 1
+    imag(pole) < 0 ? 2 : imag(pole) == 0 ? 1 : 0
+  else
+    -residuesigma(conj(pole), -causalsign)
+  end
 end
-residuesigma(pole::Pole) = residuesigma(pole.pole - im * pole.deformation)
+residuesigma(pole::Pole) = residuesigma(pole.pole - im * pole.deformation, pole.causalsign)
 
-function imagcontourdeformation(x, θ=1.0e-6)
-  r, i = reim(x)
-  deformation = if (!iszero(i) && abs(angle(x)) >= θ)
+function imagcontourdeformation(pole, causalsign; θ=1.0e-6)
+  r, i = reim(pole)
+  deformation = if (!iszero(i) && abs(angle(pole)) >= θ)
     zero(r)
-  elseif iszero(x)
+  elseif iszero(pole)
     -one(r)
   elseif isfinite(r) && isfinite(i)
     -(tan(θ) * abs(r) + i)
@@ -82,9 +77,9 @@ function imagcontourdeformation(x, θ=1.0e-6)
   else
     -one(r)
   end
-  @assert deformation <= 0  "x, θ, deformation = $x, $θ, $deformation"
-  @assert !iszero(i + deformation) "x, θ, deformation = $x, $θ, $deformation"
-  return deformation
+  @assert deformation <= 0  "pole, θ, deformation = $pole, $θ, $deformation"
+  @assert !iszero(i + deformation) "pole, θ, deformation = $pole, $θ, $deformation"
+  return deformation * causalsign
 end
 
 

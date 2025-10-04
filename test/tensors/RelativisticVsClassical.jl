@@ -26,9 +26,11 @@ const LMV = LinearMaxwellVlasov
   for σ ∈ (0, -1, 1), ϕ ∈ (-1, 1)
     F = ComplexF64(ω, σ * ω / 100)
     K = Wavenumber(k=ϕ * k, θ=π/4)
-    options = Options(summation_rtol=1e-3, quadrature_rtol=1e-3, cubature_rtol=1e-3)
+    config = Configuration(F, K)
+    config.options = Options(summation_rtol=1e-8, quadrature_rtol=1e-8)
     config = Configuration(F, K, options)
     outputC = LMV.contribution(classical, config)
+    config.options = Options(quadrature_rtol=1e-6, summation_rtol=1e-6, cubature_rtol=1e-6)
     outputR = LMV.contribution(relativistic, config)
 
     @testset "Inferred" begin

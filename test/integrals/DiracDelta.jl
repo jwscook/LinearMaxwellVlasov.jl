@@ -23,7 +23,7 @@ end
     Bb = FBeam(vth, vd)
     Db = FParallelDiracDelta(vd)
     resonance = (real(ω) - n * Ω) / real(K.parallel) == vd
-    @testset "kz=$(K.parallel * K.multipliersign), ω=$ω,pow=$(pow), dFdv=$(dFdv), resonance=$resonance" begin
+    @testset "kz=$(K.parallel), ω=$ω,pow=$(pow), dFdv=$(dFdv), resonance=$resonance" begin
     try
       resultBb = LMV.parallel(Bb, ω, K, n, Ω, pow, dFdv)
       isnan(resultBb) && return

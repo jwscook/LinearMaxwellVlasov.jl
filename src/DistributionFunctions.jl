@@ -81,8 +81,7 @@ not damping.
 function integrate(f::AbstractFParallelNumerical, numerator_kernel::T,
     pole::Pole, ∂F∂v::Bool, tol::Tolerance=Tolerance()) where {T<:Function}
   fv = f(∂F∂v) # TODO
-  ms = pole.multipliersign
-  numerator(v) = fv(v * ms) * numerator_kernel(v * ms)
+  numerator(v) = fv(v) * numerator_kernel(v)
   integrand(v) = numerator(v) / (v - pole)
 
   limits = [f.lower, f.upper] .+ im * pole.deformation

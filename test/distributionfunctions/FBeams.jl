@@ -66,6 +66,7 @@ const LMV = LinearMaxwellVlasov
         @inferred LMV.parallel(beam, ω, wavenumber, 3 * Ω)
       catch err
         @info err
+        rethrow(err)
         inferred = false
       end
       @test inferred

@@ -42,11 +42,11 @@ end
     d = deformation
     z = r + im * i
     iszero(d - i) && continue # otherwise test logic is broken ...
-    pole = LMV.Pole(z, 1)
+    pole = LMV.Pole(z, 1, d)
 
     expected = plasma_dispersion_function(z)
 
-    σ = LMV.residuesigma(pole - im * d)
+    σ = LMV.residuesigma(pole)
     rs = im * π * σ * numerator(z)
     ab = QuadGK.quadgk(x->foobles(x, z), -12 + im * d, 12 + im * d)[1] # ... here
     manualresult = ab + rs
@@ -61,7 +61,7 @@ end
   end
 end
 @testset "imagcontourdeformation" begin
- @assert LMV.imagcontourdeformation(Inf + NaN*im) <= 0
+ @assert LMV.imagcontourdeformation(Inf + NaN*im, 1) <= 0
 end
 @testset "integral contour deformation" begin
   numerator(x) = exp(-x*x) / sqrt(π)
@@ -71,7 +71,7 @@ end
 
     expected = plasma_dispersion_function(z)
 
-    d = LMV.imagcontourdeformation(z)
+    d = LMV.imagcontourdeformation(z, r >= 0 ? 1 : -1)
     deformedpole = LMV.Pole(z, 1, d)
     result = QuadGK.quadgk(x->foobles(x, z), -12 + im * d, 12 + im * d)[1] + LMV.residue(numerator, deformedpole)
 
