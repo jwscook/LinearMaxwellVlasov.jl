@@ -11,9 +11,13 @@ struct NewbergerRelativistic{S,T,U,V}
 end
 NewbergerRelativistic(s, ω, kz, k⊥) = NewbergerRelativistic(s, ω, kz, k⊥, Ref(0))
 
-fγ(nr::NewbergerRelativistic, pz⊥) = sqrt(1 + sum(x->x^2, pz⊥) / (nr.species.m * c₀)^2)
+function fγ(nr::NewbergerRelativistic, pz⊥)
+  y = pz⊥ ./ (nr.species.m * c₀)
+  n = norm(y)
+  return sqrt(1 + sum(x->x^2, y ./ n) * n^2)
+end
 function fa(nr::NewbergerRelativistic, pz⊥)
-  return (fγ(nr, pz⊥) * nr.ω - nr.kz * pz⊥[1] / nr.species.m) / nr.species.Ω
+  return (fγ(nr, pz⊥) - pz⊥[1] * nr.kz / (nr.species.m * nr.ω)) * nr.ω / nr.species.Ω
 end
 
 denominator(nr::NewbergerRelativistic, pz⊥) = sinpi(fa(nr, pz⊥))
@@ -92,7 +96,9 @@ function numeratorintegera(nr::NewbergerRelativistic, pz⊥)
   n⊥ = k⊥ * c₀ / ω
 
   γ = fγ(nr, pz⊥)
+
   a = round(Int, fa(nr, pz⊥))
+#  @show fa(nr, pz⊥) - a
   γξ⊥ = p⊥ * k⊥ / m / Ω
 
   dfdpz = DualNumbers.dualpart(nr.species(Dual(pz, 1), p⊥))
@@ -109,15 +115,16 @@ function numeratorintegera(nr::NewbergerRelativistic, pz⊥)
   @assert isfinite(Jad)
   J_a, J_ad = (-1)^a .* (Ja, Jad)
 
-  θF = p⊥ * dfdpz - pz * dfdp⊥
+  θF = (p⊥ * dfdpz - pz * dfdp⊥)
 
-  Qxx = p⊥ / γξ⊥^2 * (dfdp⊥ + kz / (m * γ * ω) * θF) * (π * a * Ja * J_a) * a
-  Qxy = im * p⊥ / γξ⊥ * (dfdp⊥ + kz / (m * γ * ω) * θF) * (π * a * Ja * J_ad)
-  Qxz = (p⊥ * dfdpz - Ω / (γ * ω) * θF * (-1)^a * a) * π * a * Ja / γξ⊥ * J_a
+  Qxx = (dfdp⊥ + kz / (m * γ * ω) * θF) * (π * a * Ja * J_a) * a * p⊥ / γξ⊥^2
+  Qxy = im * (dfdp⊥ + kz / (m * γ * ω) * θF) * (π * a * Ja * J_ad) * p⊥ / γξ⊥
+  #Qxz = (p⊥ * dfdpz - Ω / (γ * ω) * θF * (-1)^a * a) * π * a * Ja / γξ⊥ * J_a
+  Qxz = ((1 - Ω / (γ * ω) * (-1)^a * a) * dfdpz + Ω / (γ * ω) * (-1)^a * a * pz / p⊥ * dfdp⊥) * π * a * Ja / k⊥ * m * Ω * J_a
   Qyx = -Qxy
   Qyy = p⊥ * (dfdp⊥ + kz / (m * γ * ω) * θF) * (π * Jad * J_ad)
   Qyz = im * (Ω / (γ * ω) * θF * a - p⊥ * dfdpz) * π * Ja * J_ad
-  Qzx = pz / γξ⊥ * (dfdp⊥ + kz / (m * γ * ω) * θF) * (π * a * Ja * J_a)
+  Qzx = pz * (dfdp⊥ + kz / (m * γ * ω) * θF) * (π * a * Ja * J_a) / p⊥ / k⊥ * m * Ω
   Qzy = im * pz * (dfdp⊥ + kz / (m * γ * ω) * θF) * (π * Ja * J_ad)
   Qzz = pz * dfdpz * (π * Ja * J_a) - pz / p⊥ * Ω / (γ * ω) * θF * (π * a * Ja * J_a)
 
@@ -142,15 +149,31 @@ function momentumpole(nr::NewbergerRelativistic, p⊥, n, deformation)
   b = - 2 * n * Ω * kz * m * c₀^2 / ω^2
   c = p⊥^2 + m^2 * c₀^2 * (1 - (n * Ω / ω)^2)
 
-  pzroot1 = (-b + sqrt(b^2 - 4 * a * c)) / (2a)
-  pzroot2 = (-b - sqrt(b^2 - 4 * a * c)) / (2a)
+  nrm = maximum(abs, (2a, b, c))
+  b /= nrm
+  c /= nrm
+  a /= nrm
 
+  pzroot1, pzroot2 = if n == 0
+    @assert iszero(b)
+    sqrt(- c / a) .* (-1, 1)
+  else
+    absb = abs(b)
+    pzroot1 = (-b/absb - sqrt(b^2 / absb^2 - 4 * a * c / absb^2)) / (2a) * absb
+    pzroot2 = (-b/absb + sqrt(b^2 / absb^2 - 4 * a * c / absb^2)) / (2a) * absb
+    (pzroot1, pzroot2)
+  end
+
+  ν1 = fa(nr, (pzroot1, p⊥))
+  ν2 = fa(nr, (pzroot2, p⊥))
   causalsign = real(kz) >= 0 ? 1 : -1
-  if sign(kz) == -1
-    @assert !isapproxinteger(fa(nr, (pzroot2, p⊥)), 1000eps())
+  if isapproxinteger(ν1, 100eps())
+    @assert isapproxinteger(ν1, 100eps()) ν1
+    @assert !isapproxinteger(ν2, 100eps()) ν2
     return Pole(pzroot1, causalsign, deformation)
   else
-    @assert isapproxinteger(fa(nr, (pzroot2, p⊥)), 1000eps())
+    @assert !isapproxinteger(ν1, 100eps()) ν1
+    @assert isapproxinteger(ν2, 100eps()) ν2
     return Pole(pzroot2, causalsign, deformation)
   end
 end
@@ -189,6 +212,10 @@ function relativisticmomentum(S::CoupledRelativisticSpecies, C::Configuration)
     output, errorestimate = HCubature.hcubature(x->integrand((x[1] + im * deformation, x[2])),
       (-20pchar, 0), (20pchar, 20pchar), initdiv=16,
       rtol=cubartol, atol=cubaatol, maxevals=C.options.cubature_maxevals)
+    #output, errorestimate = HCubature.hcubature(x->integrand((pchar * x[1] + im * deformation, pchar * x[2])),
+    #  (-Inf, 0), (Inf, Inf), initdiv=16,
+    #  rtol=cubartol, atol=cubaatol, maxevals=C.options.cubature_maxevals)
+    #output /= pchar
     if C.options.erroruponcubaturenonconformance
       @assert (integrand.count[] < C.options.cubature_maxevals) ||
         errorestimate < max(cubartol * norm(output), cubaatol)
@@ -197,7 +224,7 @@ function relativisticmomentum(S::CoupledRelativisticSpecies, C::Configuration)
   end
 
   outertol = C.options.quadrature_tol.rel
-  innertol = outertol / 2 # inner loop has higher accuracy than outer
+  innertol = outertol / 10 # inner loop has higher accuracy than outer
 
   function relativisticresidue(p⊥, pv)
     causalconj = real(kz) >= 0 ? 1 : -1
@@ -206,14 +233,6 @@ function relativisticmomentum(S::CoupledRelativisticSpecies, C::Configuration)
       @assert pole.deformation == deformation
       output1 = residue(x->laurentnumerator(integrand, (x, p⊥), n), pole)
       @assert !any(isnan, output1)
-      #pole = momentumpole(integrand, p⊥, n, deformation)
-      #iszero(residuesigma(pole)) && return zero(pv)
-      #integrandpz(x) = numerator(integrand, (x, p⊥))
-      #rpradius = abs(pole) * sqrt(eps())
-      #rp = residuepartadaptive(integrandpz, pole, rpradius, 64,
-      #  C.options.summation_tol)
-      #output1 = causalconj * imag.(residue(rp, causalconj(pole)))
-      #output1 = sign(real(kz)) .* real(output1) .+ im .* imag(output1)
       return output1
     end
     output = converge(alllocalresidues, C.options.summation_tol)
@@ -222,17 +241,11 @@ function relativisticmomentum(S::CoupledRelativisticSpecies, C::Configuration)
   end
   function integralsnested1D(∫dpz::T, pv) where {T<:Function}
     p⊥normalisation = S.F.normalisation[2]
-#    return first(QuadGK.quadgk(x->∫dpz(x, pv),
-#      p⊥normalisation * 1e-3, p⊥normalisation * 20,
-#      atol=max(C.options.quadrature_tol.abs,
-#               outertol * norm(pv) / 2),
-#      rtol=outertol
-#    ))
     transformfunctor = TransformFromInfinity(x->∫dpz(x, pv), p⊥normalisation)
     return first(QuadGK.quadgk(
       transformfunctor,
-      coordinate(transformfunctor, p⊥normalisation * 1e-3),
-      coordinate(transformfunctor, p⊥normalisation * 1e3),
+      coordinate(transformfunctor, p⊥normalisation * 1e-16),
+      coordinate(transformfunctor, p⊥normalisation * 1e2),
       atol=max(C.options.quadrature_tol.abs, outertol * norm(pv) / 2),
       rtol=outertol))
   end

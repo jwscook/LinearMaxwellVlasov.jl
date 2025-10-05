@@ -29,7 +29,7 @@ const LMV = LinearMaxwellVlasov
     config = Configuration(F, K)
     config.options = Options(summation_rtol=1e-8, quadrature_rtol=1e-8)
     outputC = LMV.contribution(classical, config)
-    config.options = Options(quadrature_rtol=1e-3, summation_rtol=1e-3, cubature_rtol=1e-3)
+    config.options = Options(quadrature_rtol=1e-5, summation_rtol=1e-5, cubature_rtol=1e-5)
     outputR = LMV.contribution(relativistic, config)
 
     @testset "Inferred" begin
