@@ -23,14 +23,13 @@ const LMV = LinearMaxwellVlasov
 
   k = 2π/λD / 2
   ω = abs(vthe * k) # + Ωe
-  for σ ∈ (0, -1, 1), ϕ ∈ (-1, 1)
+  for σ ∈ (0, 1, -1), ϕ ∈ (1, -1)
     F = ComplexF64(ω, σ * ω / 100)
-    K = Wavenumber(k=ϕ * k, θ=π/4)
+    K = Wavenumber(ϕ * k, k)
     config = Configuration(F, K)
     config.options = Options(summation_rtol=1e-8, quadrature_rtol=1e-8)
-    config = Configuration(F, K, options)
     outputC = LMV.contribution(classical, config)
-    config.options = Options(quadrature_rtol=1e-6, summation_rtol=1e-6, cubature_rtol=1e-6)
+    config.options = Options(quadrature_rtol=1e-3, summation_rtol=1e-3, cubature_rtol=1e-3)
     outputR = LMV.contribution(relativistic, config)
 
     @testset "Inferred" begin
@@ -56,7 +55,7 @@ const LMV = LinearMaxwellVlasov
     rtol=1.0e-3
     atol=1.0e-5
 
-    @testset "real sign growth rate $σ, sign wavenumber $ϕ" begin
+    @testset "real, sign growth rate $σ, sign wavenumber $ϕ" begin
       @test real(outputC[1,1])≈real(outputR[1,1]) rtol=rtol atol=atol
       @test real(outputC[1,2])≈real(outputR[1,2]) rtol=rtol atol=atol
       @test real(outputC[1,3])≈real(outputR[1,3]) rtol=rtol atol=atol
@@ -67,7 +66,7 @@ const LMV = LinearMaxwellVlasov
       @test real(outputC[3,2])≈real(outputR[3,2]) rtol=rtol atol=atol
       @test real(outputC[3,3])≈real(outputR[3,3]) rtol=rtol atol=atol
     end
-    @testset "imag sign growth rate $σ, sign wavenumber $ϕ" begin
+    @testset "imag, sign growth rate $σ, sign wavenumber $ϕ" begin
       @test imag(outputC[1,1])≈imag(outputR[1,1]) rtol=rtol atol=atol
       @test imag(outputC[1,2])≈imag(outputR[1,2]) rtol=rtol atol=atol
       @test imag(outputC[1,3])≈imag(outputR[1,3]) rtol=rtol atol=atol

@@ -27,6 +27,7 @@ Base.:+(p::Pole, x::Number) = p.pole + x
 Base.:*(x::Number, p::Pole) = x * p.pole
 Base.:*(p::Pole, x::Number) = p.pole * x
 Base.:^(p::Pole, n::Integer) = p.pole^n
+Base.:/(p::Pole, x::Number) = p.pole / x
 pole(p::Pole) = p.pole
 import DualNumbers: Dual
 Dual(p::Pole, x) = Dual(p.pole, x)
