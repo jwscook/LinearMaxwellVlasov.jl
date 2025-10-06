@@ -1,11 +1,5 @@
 using QuadGK, SpecialFunctions, LinearAlgebra
 
-const default_integral_range = 12
-const quadorder = 32
-const quadorder_para = quadorder
-const quadorder_perp = quadorder
-const quadrature = QuadGK.quadgk
-
 abstract type AbstractDistributionFunction end
 abstract type AbstractFParallel <: AbstractDistributionFunction end
 abstract type AbstractFPerpendicular <: AbstractDistributionFunction end
@@ -32,7 +26,7 @@ end
 Tool to normalize a function f between two integral limits a and b
 """
 function normalise(f::T, a::Float64, b::Float64) where {T<:Function}
-  n, _ = quadrature(f, a, b, rtol=eps(), atol=0, order=quadorder, norm=quadnorm)
+  n, _ = QuadGK.quadgk(f, a, b, rtol=eps(), atol=0, order=QUADORDER, norm=quadnorm)
   @assert n > 0 "n = $n"
   n == one(n) && return f, one(n)
   invn = 1 / n
@@ -58,16 +52,16 @@ Integration of Abstract Arbitrary FParallel
 function integrate(f::AbstractFParallelNumerical, ∂F∂v::Bool=false,
     tol::Tolerance=Tolerance())
   integrand = f(∂F∂v) # TODO
-  return quadrature(integrand, f.lower, f.upper, rtol=tol.rel,
-    atol=tol.abs, order=quadorder_para, norm=quadnorm)[1]
+  return QuadGK.quadgk(integrand, f.lower, f.upper, rtol=tol.rel,
+    atol=tol.abs, order=QUADORDER_PARA, norm=quadnorm)[1]
 end
 function integrate(f::AbstractFParallelNumerical, numerator_kernel::T,
     ∂F∂v::Bool, tol::Tolerance=Tolerance()) where {T<:Function}
   # No pole on this integral, therefore no residue
   fv = f(∂F∂v) # TODO
   integrand(v) = fv(v) * numerator_kernel(v)
-  return first(quadrature(integrand, f.lower, f.upper,
-    rtol=tol.rel, atol=tol.abs, order=quadorder_para, norm=quadnorm))
+  return first(QuadGK.quadgk(integrand, f.lower, f.upper,
+    rtol=tol.rel, atol=tol.abs, order=QUADORDER_PARA, norm=quadnorm))
 end
 
 """
@@ -87,7 +81,7 @@ function integrate(f::AbstractFParallelNumerical, numerator_kernel::T,
   limits = [f.lower, f.upper] .+ im * pole.deformation
   Δ = (f.upper - f.lower)
   output = QuadGK.quadgk(integrand, limits[1] - Δ, limits[2] + Δ,
-    rtol=tol.rel, atol=tol.abs, order=quadorder_para, norm=quadnorm)[1]
+    rtol=tol.rel, atol=tol.abs, order=QUADORDER_PARA, norm=quadnorm)[1]
 
   return output + residue(numerator, pole)
 end
@@ -116,8 +110,8 @@ function integrate(f::AbstractFPerpendicular, kernel::T,
     ) where {T<:Function}
   fv = f(∂F∂v) # TODO
   f_integrand(v) = fv(v) .* kernel(v)
-  return first(quadrature(f_integrand, lower(f), upper(f),
-    rtol=tol.rel, atol=tol.abs, order=quadorder_perp, norm=quadnorm))
+  return first(QuadGK.quadgk(f_integrand, lower(f), upper(f),
+    rtol=tol.rel, atol=tol.abs, order=QUADORDER_PERP, norm=quadnorm))
 end
 function integrate(f::AbstractFPerpendicularNumerical, ∂F∂v::Bool=false,
     tol::Tolerance=Tolerance())

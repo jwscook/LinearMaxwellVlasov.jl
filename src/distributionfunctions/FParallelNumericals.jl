@@ -50,8 +50,8 @@ function FParallelNumerical(f::T, lower::U, upper::U
 end
 function FParallelNumerical(vth::Number, vd::Number=0.0)
   @assert vth > 0
-  lower = vd - default_integral_range * vth
-  upper = vd + default_integral_range * vth
+  lower = vd - DEFAULT_INTEGRAL_RANGE * vth
+  upper = vd + DEFAULT_INTEGRAL_RANGE * vth
   smp = ShiftedMaxwellianParallel(vth, vd)
   F = v -> smp(v, false)
   dFdv = v -> smp(v, true)

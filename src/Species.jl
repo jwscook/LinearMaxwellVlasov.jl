@@ -81,12 +81,12 @@ struct SeparableVelocitySpecies{
   Ω::TΩ # cyclotron frequency
   Fz::Tz
   F⊥::T⊥
+  minharmonics::Int
+end
+function SeparableVelocitySpecies(Π, Ω, Fz, F⊥)
+  return SeparableVelocitySpecies(Π, Ω, Fz, F⊥, DEFAULT_MIN_HARMONICS)
 end
 (S::SeparableVelocitySpecies)(vz, v⊥) = S.Fz(vz) * S.F⊥(v⊥)
-
-lowerintegralbounds(S::SeparableVelocitySpecies) = (lower(S.Fz), lower(S.F⊥))
-upperintegralbounds(S::SeparableVelocitySpecies) = (upper(S.Fz), upper(S.F⊥))
-
 
 """
 Kinetic plasma species defined by one coupled distribution function in velocity
@@ -105,6 +105,10 @@ struct CoupledVelocitySpecies{
   Π::TΠ # plasma frequency with rest mass
   Ω::TΩ # cyclotron frequency with rest mass
   F::TF
+  minharmonics::Int
+end
+function CoupledVelocitySpecies(Π, Ω, F)
+  return CoupledVelocitySpecies(Π, Ω, F, DEFAULT_MIN_HARMONICS)
 end
 (S::CoupledVelocitySpecies)(vz, v⊥) = S.F(vz, v⊥)
 """
@@ -127,9 +131,6 @@ function CoupledVelocitySpecies(Π::Float64, Ω::Float64, vthz::Float64,
     FCoupledVelocityNumerical(vthz, vth⊥, vzdrift, v⊥drift))
 end
 
-lowerintegralbounds(S::CoupledVelocitySpecies) = (-upper(S.F), lower(S.F))
-upperintegralbounds(S::CoupledVelocitySpecies) = (upper(S.F), upper(S.F))
-
 """
 Kinetic plasma species defined by one coupled distribution function in momentum
 space such that the relativistic dielectric tensor can be calculated.
@@ -148,12 +149,16 @@ struct CoupledRelativisticSpecies{
   Π::TΠ # plasma frequency with rest mass
   Ω::TΩ # cyclotron frequency with rest mass
   m::Tm # rest mass of single particle
-  F::TF
-  function CoupledRelativisticSpecies(Π::TΠ, Ω::TΩ, m::Tm, F::TF
+  F::TF # the distribution function
+  minharmonics::Int
+  function CoupledRelativisticSpecies(Π::TΠ, Ω::TΩ, m::Tm, F::TF, h::Int
       ) where {TΠ, TΩ, Tm, TF}
     @warn "CoupledRelativisticSpecies not stress tested"
-    return new{TΠ,TΩ,Tm,TF}(Π, Ω, m, F)
+    return new{TΠ,TΩ,Tm,TF}(Π, Ω, m, F, h)
   end
+end
+function CoupledRelativisticSpecies(Π, Ω, m, F)
+  return CoupledRelativisticSpecies(Π, Ω, m, F, DEFAULT_MIN_HARMONICS)
 end
 (S::CoupledRelativisticSpecies)(pz, p⊥) = S.F(pz, p⊥)
 
@@ -175,9 +180,6 @@ function CoupledRelativisticSpecies(Π, Ω, m, pthz::Number, pth⊥=pthz, pzdrif
   return CoupledRelativisticSpecies(Π, Ω, m,
     FRelativisticNumerical(pthz, pth⊥, pzdrift))
 end
-
-lowerintegralbounds(S::CoupledRelativisticSpecies) = (-c₀, 0.0)
-upperintegralbounds(S::CoupledRelativisticSpecies) = (c₀, c₀)
 
 """
     MaxwellianSpecies(Π,Ω,vthb,vth⊥=vthb,vdb=0.0)
@@ -268,3 +270,5 @@ function WarmSpecies(s::T, γ=5/3) where {T<:AbstractSeparableVelocitySpecies{
   (s.Fz.vth != s.F⊥.vth) && throw("Parallel and perp thermal speeds not equal")
   return WarmSpecies(s.Π, s.Ω, s.Fz.vth, γ)
 end
+
+minharmonics(s::AbstractKineticSpecies) = s.minharmonics

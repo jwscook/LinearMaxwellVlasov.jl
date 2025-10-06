@@ -12,3 +12,4 @@ derivation_*.txt
 *.jld2
 Manifest.toml
 *.pb.gz
+*.png

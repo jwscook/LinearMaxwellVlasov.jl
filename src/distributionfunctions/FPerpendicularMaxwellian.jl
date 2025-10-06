@@ -22,4 +22,4 @@ end
 is_normalised(f::FPerpendicularMaxwellian) = true
 
 lower(f::FPerpendicularMaxwellian) = zero(f.vth)
-upper(f::FPerpendicularMaxwellian) = default_integral_range * f.vth
+upper(f::FPerpendicularMaxwellian) = DEFAULT_INTEGRAL_RANGE * f.vth

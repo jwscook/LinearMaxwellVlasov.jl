@@ -83,6 +83,9 @@ function numerator(nr::NewbergerRelativistic, pz⊥)
   return Qij
 end
 
+"""
+Same as `numerator` but for integer `a` and with floating point cancellation problems mitigated.
+"""
 function numeratorintegera(nr::NewbergerRelativistic, pz⊥)
   nr.count[] += 1
   pz, p⊥ = pz⊥
@@ -98,7 +101,6 @@ function numeratorintegera(nr::NewbergerRelativistic, pz⊥)
   γ = fγ(nr, pz⊥)
 
   a = round(Int, fa(nr, pz⊥))
-#  @show fa(nr, pz⊥) - a
   γξ⊥ = p⊥ * k⊥ / m / Ω
 
   dfdpz = DualNumbers.dualpart(nr.species(Dual(pz, 1), p⊥))
@@ -198,7 +200,7 @@ function relativisticmomentum(S::CoupledRelativisticSpecies, C::Configuration)
 
   cubaatol = C.options.cubature_tol.abs
   cubartol = C.options.cubature_tol.rel
-  deformation = S.m * imagcontourdeformation(ω / kz, real(kz) >= 0 ? 1 : -1; θ=1e-6)
+  deformation = S.m * imagcontourdeformation(ω / kz, real(kz) >= 0 ? 1 : -1)
 
   pchar = norm(S.F.normalisation)
 
@@ -235,7 +237,7 @@ function relativisticmomentum(S::CoupledRelativisticSpecies, C::Configuration)
       @assert !any(isnan, output1)
       return output1
     end
-    output = converge(alllocalresidues, C.options.summation_tol)
+    output = converge(alllocalresidues, minharmonics(S), C.options.summation_tol)
     @assert !any(isnan, output)# "output = $output"
     return output
   end

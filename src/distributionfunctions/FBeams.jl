@@ -33,5 +33,5 @@ end
 
 is_normalised(f::FBeam) = true
 
-lower(f::FBeam) = f.vd - f.vth * default_integral_range
-upper(f::FBeam) = f.vd + f.vth * default_integral_range
+lower(f::FBeam) = f.vd - f.vth * DEFAULT_INTEGRAL_RANGE
+upper(f::FBeam) = f.vd + f.vth * DEFAULT_INTEGRAL_RANGE

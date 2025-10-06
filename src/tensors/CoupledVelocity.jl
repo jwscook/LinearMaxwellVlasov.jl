@@ -131,7 +131,7 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
       @assert !any(isnan, output)
       return output
     end
-    return converge(allresidues, C.options.summation_tol)
+    return converge(allresidues, minharmonics(S), C.options.summation_tol)
   end
 
   t1 = @elapsed robustintegral, deformation = robustintegral2D()
