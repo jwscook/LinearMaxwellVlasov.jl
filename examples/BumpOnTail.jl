@@ -79,21 +79,6 @@ function run(DIRECTION)
         @warn err
         rethrow(err)
       end
-      #neldermeadsol = WindingNelderMead.optimise(x->objective(c, x),
-      #  (ub .+ lb) / 2, (ub .- lb) ./ 1000; stopval=1.0e-4, timelimit=10,
-      #  maxiters=200, ftol_rel=0, ftol_abs=0,
-      #  xtol_rel=norm(ub .- lb) / 1000, xtol_abs=norm(ub .- lb) / 1000)
-      #simplex, windingnumber, returncode, numiterations = neldermeadsol
-      #if (windingnumber == 1 && returncode == :XTOL_REACHED)
-      #  c = deepcopy(config)
-      #  minimiser = if windingnumber == 0
-      #    WindingNelderMead.position(WindingNelderMead.bestvertex(simplex))
-      #  else
-      #    WindingNelderMead.centre(simplex)
-      #  end
-      #  unitobjective!(c, minimiser)
-      #  push!(output, c)
-      #end
     end
     return solutions
   end
@@ -113,7 +98,7 @@ function run(DIRECTION)
   @time for (arg, title) in args
     @time solutions = solve(arg)
     ω = [solution.frequency for solution in values(solutions)]
-    Ks = [para(solution.wavenumber) * solution.wavenumber.multipliersign for solution in values(solutions)]
+    Ks = [para(solution.wavenumber) for solution in values(solutions)]
     inds = sortperm(Ks)
     ω = ω[inds]
     Ks = Ks[inds]

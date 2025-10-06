@@ -23,7 +23,7 @@ right = SeparableVelocitySpecies(Πe, eps(),
   FParallelDiracDelta(vbeam), FPerpendicularDiracDelta(eps()))
 Sdelta = [left, right]
 
-f0 = abs(Πe)
+f0 = abs(Πe) * sqrt(2)
 k0 = f0 / abs(vbeam)
 
 options = Options(memoiseparallel=false, memoiseperpendicular=true)
@@ -107,13 +107,13 @@ Plots.gr()
 function plotit(sols, file_extension=name_extension, fontsize=9)
   sols = sort(sols, by=s->imag(s.frequency))
   ωs = [sol.frequency for sol in sols]./f0
-  kzs = [para(sol.wavenumber) * sol.wavenumber.multipliersign for sol in sols]./k0
+  kzs = [para(sol.wavenumber) for sol in sols]./k0
   p = sortperm(imag.(ωs))
   ωs = ωs[p]
   kzs = kzs[p]
 
-  xlabel = "\$\\mathrm{Wavenumber} \\quad [\\Pi_{e} / v_b]\$"
-  ylabel = "\$\\mathrm{Frequency} \\quad [\\Pi_{e}]\$"
+  xlabel = "\$\\mathrm{Wavenumber} \\quad [\\Pi_{0} / v_b]\$"
+  ylabel = "\$\\mathrm{Frequency} \\quad [\\Pi_{0}]\$"
   Plots.scatter(kzs, real.(ωs), zcolor=imag.(ωs),
     markersize=2, markerstrokewidth=0, alpha=0.8, markershape=:square,
     xlabel=xlabel, ylabel=ylabel, label="\$\\omega\$")
@@ -121,10 +121,12 @@ function plotit(sols, file_extension=name_extension, fontsize=9)
     framestyle=:box, lims=:round, markersize=3,
     markerstrokewidth=0, markershape=:circle, c=Plots.cgrad(),
     xlabel=xlabel, ylabel=ylabel, legend=:topleft, label="\$\\gamma\$")
-  Plots.scatter!([sqrt(3)/2], [0.5], markershape=:star, markersize=5,
+  Plots.scatter!([sqrt(3/8)], [1/sqrt(8)], markershape=:star, markersize=5,
                  label=nothing, color=0)
-  Plots.annotate!([(sqrt(3)/2, 0.6,
-    text("\$\\gamma=0.5\\Pi_e,k=\\sqrt{3}/2\\Pi_e/v_b\$", fontsize, :black))])
+  Plots.annotate!([(sqrt(3/8), 0.5,
+    text("\$k=\\sqrt{3/8}\\Pi_0/v_b\$", fontsize, :black))])
+  Plots.annotate!([(sqrt(3/8), 0.65,
+    text("\$\\gamma=1/\\sqrt{8}\\Pi_0\$", fontsize, :black))])
   Plots.plot!(framestyle=:box, lims=:round)
   Plots.savefig("TwoStream_DispersionRelation.pdf")
 end
