@@ -101,7 +101,7 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
         rtol=cubartol, atol=cubaatol, maxevals=C.options.cubature_maxevals)
     else
       @assert S.F.lower > 0
-      ∫dvrdθ(vrθ) = vrθ[1] * nc(parallelperpfrompolar(vrθ) + (im * deformation, zero(vrθ[2])))
+      ∫dvrdθ(vrθ) = vrθ[1] * nc(parallelperpfrompolar(vrθ) .+ (im * deformation, zero(vrθ[2])))
       HCubature.hcubature(∫dvrdθ,
         (S.F.lower/4, -π / 2), (4S.F.upper, π / 2), initdiv=16,
         rtol=cubartol, atol=cubaatol, maxevals=C.options.cubature_maxevals)
