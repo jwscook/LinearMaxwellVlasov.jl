@@ -5,31 +5,36 @@ using LinearMaxwellVlasov
 const LMV = LinearMaxwellVlasov
 
 import LinearMaxwellVlasov: parallel
-function parallel(fz::LMV.FBeam, ω, kz, n::Integer, Ω::Number, p::Integer, diffbool::Bool, tol=LMV.Tolerance())
-    return parallel(fz, ω, kz, n * Ω, p, diffbool, tol)
+function parallel(fz::LMV.FBeam, ω, kz, n::Integer, Ω::Number, p::Integer, diffbool::Bool, tol=LMV.Tolerance(),
+    cauchydeformationangle=LMV.DEFAULT_CAUCHY_DEFORMATION_ANGLE)
+  return parallel(fz, ω, kz, n * Ω, p, diffbool, tol, cauchydeformationangle)
 end
-function parallel(fz::LMV.FBeam, ω, kz::Number, nΩ::Number, p::Integer, diffbool::Bool, tol=LMV.Tolerance())
+function parallel(fz::LMV.FBeam, ω, kz::Number, nΩ::Number, p::Integer, diffbool::Bool, tol=LMV.Tolerance(),
+    cauchydeformationangle=LMV.DEFAULT_CAUCHY_DEFORMATION_ANGLE)
   k = LMV.Wavenumber(kz, NaN)
-  return parallel(fz, ω, k, nΩ, p, diffbool, tol)
+  return parallel(fz, ω, k, nΩ, p, diffbool, tol, cauchydeformationangle)
 end
 
-function parallel(fz::LMV.FBeam, ω, k::LMV.Wavenumber, nΩ::Number, p::Unsigned, diffbool::Bool, tol=LMV.Tolerance())
+function parallel(fz::LMV.FBeam, ω, k::LMV.Wavenumber, nΩ::Number, p::Unsigned, diffbool::Bool,
+    tol=LMV.Tolerance(), cauchydeformationangle=LMV.DEFAULT_CAUCHY_DEFORMATION_ANGLE)
   outputtuple = LMV.parallel(fz, ω, k, nΩ)
   if !((Unsigned(p), diffbool) in LMV.PARALLEL_TUPLE_ORDER)
-      @show Unsigned(p), diffbool
-      @show LMV.PARALLEL_TUPLE_ORDER
+    @show Unsigned(p), diffbool
+    @show LMV.PARALLEL_TUPLE_ORDER
   end
   @assert (Unsigned(p), diffbool) in LMV.PARALLEL_TUPLE_ORDER
   ind = findfirst(i == (Unsigned(p), diffbool) for i in LMV.PARALLEL_TUPLE_ORDER)
   return outputtuple[ind]
 end
 
-function LinearMaxwellVlasov.parallel(fz::LMV.AbstractFParallelNumerical, ω, kz, n, Ω, p::Integer, diffbool::Bool, tol=LMV.Tolerance())
-  return parallel(fz, ω, kz, n * Ω, p, diffbool, tol)
+function LinearMaxwellVlasov.parallel(fz::LMV.AbstractFParallelNumerical, ω, kz, n, Ω, p::Integer, diffbool::Bool,
+    tol=LMV.Tolerance(), cauchydeformationangle=LMV.DEFAULT_CAUCHY_DEFORMATION_ANGLE)
+  return parallel(fz, ω, kz, n * Ω, p, diffbool, tol, cauchydeformationangle)
 end
-function LinearMaxwellVlasov.parallel(fz::LMV.AbstractFParallelNumerical, ω, kz, nΩ, p::Integer, diffbool::Bool, tol=LMV.Tolerance())
+function LinearMaxwellVlasov.parallel(fz::LMV.AbstractFParallelNumerical, ω, kz, nΩ, p::Integer, diffbool::Bool,
+    tol=LMV.Tolerance(), cauchydeformationangle=LMV.DEFAULT_CAUCHY_DEFORMATION_ANGLE)
   k = kz isa Number ? LMV.Wavenumber(kz, NaN) : kz
-  return LMV.parallel(fz, ω, k, nΩ, p, diffbool, tol)
+  return LMV.parallel(fz, ω, k, nΩ, p, diffbool, tol, cauchydeformationangle)
 end
 
 using Test

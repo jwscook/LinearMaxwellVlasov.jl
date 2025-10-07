@@ -58,11 +58,11 @@ function local_solve(ks, ωs, f)
     ic, lb, ub = icsandbounds(ωc * Ωd, 0.0)
     bounded(x) = all(lb .<= x .<= ub) ? f(x, C) : Inf + Inf*im 
     t1 = @elapsed neldermeadsol = WindingNelderMead.optimise(bounded,
-      ic, [1, 1] .* Ωd / 100; stopval=1e-6, timelimit=1000,
-      maxiters=200, ftol_rel=0, ftol_abs=0, xtol_rel=0, xtol_abs=1e-3*Ωd)
+      ic, [1, 1] .* Ωd * 1e-2; stopval=1e-3, timelimit=1000,
+      maxiters=1000, ftol_rel=0, ftol_abs=0, xtol_rel=0, xtol_abs=1e-15*Ωd)
     simplex, windingnumber, returncode, numiterations = neldermeadsol
     @show t1, windingnumber, returncode, numiterations
-    if (windingnumber == 1 && returncode == :XTOL_REACHED)# || returncode == :STOPVAL_REACHED
+    if (windingnumber == 1 && returncode == :XTOL_REACHED) || returncode == :STOPVAL_REACHED
       c = deepcopy(C)
       push!(solutions_out, deepcopy(C))
     end
@@ -72,8 +72,7 @@ end
 
 function f2Dω!(x::Vector{Float64}, C::Configuration, S, cache)
   C.frequency = ComplexF64(x[1], x[2])
-  t = @elapsed output = electrostatic(S, C, cache)
-  return output
+  return electrostatic(S, C, cache)
 end
 
 const cache = LinearMaxwellVlasov.Cache()
@@ -83,7 +82,7 @@ f2Dωnum!(x::Vector{Float64}, C::Configuration) = f2Dω!(x, C, Snum, cache)
 
 const ks = reverse(collect(range(0.01, stop=2.0, length=128)))
 #ks = sort(vcat(-ks, ks))
-const ωs = range(1.0, stop=5.5, length=8)
+const ωs = range(0.0, stop=10, length=20)
 solutions_rb = Any[]
 solutions_num = Any[]
 solutions_maxw = Any[]

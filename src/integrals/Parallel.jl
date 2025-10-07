@@ -24,7 +24,7 @@ The parallel integral of the distribution function and the relevant kernel
 function parallel(S::AbstractKineticSpecies, C::Configuration, n::Integer,
     power::Unsigned, ∂F∂v::Bool)
   return parallel(S.Fz, C.frequency, C.wavenumber, n * S.Ω, power, ∂F∂v,
-    C.options.quadrature_tol)
+    C.options.quadrature_tol, C.options.cauchydeformationangle)
 end
 
 struct ParallelKernelNumerator <: Function
@@ -38,14 +38,15 @@ DistributionFunctions module. If k parallel is zero then there is no
 Landau damping, so this case is made separate, as is easier to deal with.
 """
 function parallel(Fz::AbstractFParallelNumerical, ω::Number, k::Wavenumber,
-    nΩ::Real, power::Unsigned, ∂F∂v::Bool, tol::Tolerance=Tolerance())
+    nΩ::Real, power::Unsigned, ∂F∂v::Bool, tol::Tolerance=Tolerance(),
+    cauchydeformationangle::Real=DEFAULT_CAUCHY_DEFORMATION_ANGLE)
   kz = parallel(k)
   V = complex(promote_type(typeof.((ω, kz, nΩ))...)) # to get type stability
   pkn = ParallelKernelNumerator(power)
   return if iszero(kz)
     integrate(Fz, pkn, ∂F∂v, tol) / V(nΩ - ω)
   else
-    pole = Pole((ω - nΩ) / kz, k.causalsign)
+    pole = Pole((ω - nΩ) / kz, k.causalsign, cauchydeformationangle)
     integrate(Fz, pkn, pole, ∂F∂v, tol) / V(kz)
   end
 end

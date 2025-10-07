@@ -3,8 +3,8 @@ struct Pole{T<:Number, U<:Real} <: Number
   causalsign::Int
   deformation::U
 end
-function Pole(pole::Number, causalsign::Int)
-  return Pole(pole, causalsign, imagcontourdeformation(pole, causalsign))
+function Pole(pole::Number, causalsign::Int, cauchydeformationangle=DEFAULT_CAUCHY_DEFORMATION_ANGLE)
+  return Pole(pole, causalsign, imagcontourdeformation(pole, causalsign, θ=cauchydeformationangle))
 end
 
 function Pole(ω::Number, kz::Number, n::Integer, Ω::Number,
@@ -66,7 +66,7 @@ function residuesigma(pole::Number, causalsign::Real)
 end
 residuesigma(pole::Pole) = residuesigma(pole.pole - im * pole.deformation, pole.causalsign)
 
-function imagcontourdeformation(pole, causalsign; θ=1.0e-6)
+function imagcontourdeformation(pole, causalsign, θ=DEFAULT_CAUCHY_DEFORMATION_ANGLE)
   r, i = reim(pole)
   deformation = if (!iszero(i) && abs(angle(pole)) >= θ)
     zero(r)

@@ -26,7 +26,8 @@ end
 Tool to normalize a function f between two integral limits a and b
 """
 function normalise(f::T, a::Float64, b::Float64) where {T<:Function}
-  n, _ = QuadGK.quadgk(f, a, b, rtol=eps(), atol=0, order=QUADORDER, norm=quadnorm)
+  n, _ = QuadGK.quadgk(f, a, b, rtol=eps(), atol=0, order=DEFAULT_QUADORDER,
+                       norm=quadnorm)
   @assert n > 0 "n = $n"
   n == one(n) && return f, one(n)
   invn = 1 / n
@@ -53,7 +54,7 @@ function integrate(f::AbstractFParallelNumerical, ∂F∂v::Bool=false,
     tol::Tolerance=Tolerance())
   integrand = f(∂F∂v) # TODO
   return QuadGK.quadgk(integrand, f.lower, f.upper, rtol=tol.rel,
-    atol=tol.abs, order=QUADORDER_PARA, norm=quadnorm)[1]
+    atol=tol.abs, order=DEFAULT_QUADORDER_PARA, norm=quadnorm)[1]
 end
 function integrate(f::AbstractFParallelNumerical, numerator_kernel::T,
     ∂F∂v::Bool, tol::Tolerance=Tolerance()) where {T<:Function}
@@ -61,7 +62,7 @@ function integrate(f::AbstractFParallelNumerical, numerator_kernel::T,
   fv = f(∂F∂v) # TODO
   integrand(v) = fv(v) * numerator_kernel(v)
   return first(QuadGK.quadgk(integrand, f.lower, f.upper,
-    rtol=tol.rel, atol=tol.abs, order=QUADORDER_PARA, norm=quadnorm))
+    rtol=tol.rel, atol=tol.abs, order=DEFAULT_QUADORDER_PARA, norm=quadnorm))
 end
 
 """
@@ -81,7 +82,7 @@ function integrate(f::AbstractFParallelNumerical, numerator_kernel::T,
   limits = [f.lower, f.upper] .+ im * pole.deformation
   Δ = (f.upper - f.lower)
   output = QuadGK.quadgk(integrand, limits[1] - Δ, limits[2] + Δ,
-    rtol=tol.rel, atol=tol.abs, order=QUADORDER_PARA, norm=quadnorm)[1]
+    rtol=tol.rel, atol=tol.abs, order=DEFAULT_QUADORDER_PARA, norm=quadnorm)[1]
 
   return output + residue(numerator, pole)
 end
@@ -111,7 +112,7 @@ function integrate(f::AbstractFPerpendicular, kernel::T,
   fv = f(∂F∂v) # TODO
   f_integrand(v) = fv(v) .* kernel(v)
   return first(QuadGK.quadgk(f_integrand, lower(f), upper(f),
-    rtol=tol.rel, atol=tol.abs, order=QUADORDER_PERP, norm=quadnorm))
+    rtol=tol.rel, atol=tol.abs, order=DEFAULT_QUADORDER_PERP, norm=quadnorm))
 end
 function integrate(f::AbstractFPerpendicularNumerical, ∂F∂v::Bool=false,
     tol::Tolerance=Tolerance())

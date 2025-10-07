@@ -8,10 +8,11 @@ const μ₀ = 1.25663706144e-6 # magnetic constant / permeability, SI units [N/A
 
 const DEFAULT_INTEGRAL_RANGE = 12
 const DEFAULT_MIN_HARMONICS = 1
+const DEFAULT_CAUCHY_DEFORMATION_ANGLE = 1e-6
 
-const QUADORDER = 32
-const QUADORDER_PARA = QUADORDER
-const QUADORDER_PERP = QUADORDER
+const DEFAULT_QUADORDER = 32
+const DEFAULT_QUADORDER_PARA = DEFAULT_QUADORDER
+const DEFAULT_QUADORDER_PERP = DEFAULT_QUADORDER
 
 # in order of inter-dependency
 include("./Tolerances.jl")
