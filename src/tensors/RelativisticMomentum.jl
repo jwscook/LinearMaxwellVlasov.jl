@@ -52,10 +52,10 @@ function numerator(nr::NewbergerRelativistic, pz⊥)
   Jadual, J_adual = besselj_v(MVector(a, -a), Dual(γξ⊥, 1))
   Ja, Jad = DualNumbers.realpart(Jadual), DualNumbers.dualpart(Jadual)
   J_a, J_ad = DualNumbers.realpart(J_adual), DualNumbers.dualpart(J_adual)
-  @assert isfinite(Ja)
-  @assert isfinite(J_a)
-  @assert isfinite(Jad)
-  @assert isfinite(J_ad)
+  @assert !isnan(Ja)
+  @assert !isnan(J_a)
+  @assert !isnan(Jad)
+  @assert !isnan(J_ad)
 
   θF = p⊥ * dfdpz - pz * dfdp⊥
 
@@ -73,11 +73,11 @@ function numerator(nr::NewbergerRelativistic, pz⊥)
   Qzz -= pz / p⊥ * Ω / (γ * ω) * θF * (π * a * Ja * J_a)
 
   Qij = @MArray [Qxx Qxy Qxz; Qyx Qyy Qyz; Qzx Qzy Qzz]
-  if !all(isfinite, Qij)
+  if !all(!isnan, Qij)
     @show pz, p⊥, a, γξ⊥, dfdpz, dfdp⊥, γ
     @show Ja, J_a, Jad, J_ad
   end
-  @assert all(isfinite, Qij) (Qij, a, Ja, J_a, Jad, J_ad, dfdpz, dfdp⊥)
+  @assert all(!isnan, Qij) (Qij, a, Ja, J_a, Jad, J_ad, dfdpz, dfdp⊥)
   common = 2π * p⊥ * ω / Ω
   Qij .*= common
   return Qij
@@ -113,8 +113,8 @@ function numeratorintegera(nr::NewbergerRelativistic, pz⊥)
 
   Jadual= besselj(a, Dual(γξ⊥, 1))
   Ja, Jad = DualNumbers.realpart(Jadual), DualNumbers.dualpart(Jadual)
-  @assert isfinite(Ja)
-  @assert isfinite(Jad)
+  @assert !isnan(Ja)
+  @assert !isnan(Jad)
   J_a, J_ad = (-1)^a .* (Ja, Jad)
 
   θF = (p⊥ * dfdpz - pz * dfdp⊥)
@@ -131,11 +131,11 @@ function numeratorintegera(nr::NewbergerRelativistic, pz⊥)
   Qzz = pz * dfdpz * (π * Ja * J_a) - pz / p⊥ * Ω / (γ * ω) * θF * (π * a * Ja * J_a)
 
   Qij = @MArray [Qxx Qxy Qxz; Qyx Qyy Qyz; Qzx Qzy Qzz]
-  if !all(isfinite, Qij)
+  if any(isnan, Qij)
     @show pz, p⊥, a, γξ⊥, dfdpz, dfdp⊥, γ
     @show Ja, J_a, Jad, J_ad
   end
-  @assert all(isfinite, Qij) (Qij, a, Ja, J_a, Jad, J_ad, dfdpz, dfdp⊥)
+  @assert all(!isnan, Qij) (Qij, a, Ja, J_a, Jad, J_ad, dfdpz, dfdp⊥)
   common = 2π * p⊥ * ω / Ω
   Qij .*= common
   return Qij
@@ -200,7 +200,8 @@ function relativisticmomentum(S::CoupledRelativisticSpecies, C::Configuration)
 
   cubaatol = C.options.cubature_tol.abs
   cubartol = C.options.cubature_tol.rel
-  deformation = S.m * imagcontourdeformation(ω / kz, real(kz) >= 0 ? 1 : -1)
+  deformation = S.m * imagcontourdeformation(ω / kz, real(kz) >= 0 ? 1 : -1,
+                                             C.options.cauchydeformationangle)
 
   pchar = norm(S.F.normalisation)
 
