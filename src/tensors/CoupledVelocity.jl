@@ -25,7 +25,7 @@ function pseudoharmonic(nc::NewbergerClassical, vz)
   ω = nc.ω
   Ω = nc.species.Ω
   kz = para(nc.k)
-  a = (ω - kz * vz) / Ω
+  a = (ω / Ω - kz * vz / Ω)
   return a
 end
 
@@ -41,17 +41,20 @@ function numerator(nc::NewbergerClassical, vz, v⊥)
   Ω = S.Ω
   k⊥ = perp(nc.k)
 
+  z = k⊥ * v⊥ / Ω
+
+  f = S(real(vz), v⊥)
+  T = promote_type(typeof.((f, a, z))...)
+  # if the real part of f is zero, then there are no particles at (vz, v⊥)
+  iszero(f) && return @MArray zeros(T, 3, 3)
+
   dfdvz = DualNumbers.dualpart(S(Dual(vz, 1), v⊥))
   @assert isfinite(dfdvz)
   dfdv⊥ = DualNumbers.dualpart(S(vz, Dual(v⊥, 1)))
   @assert isfinite(dfdv⊥)
-
-  z = k⊥ * v⊥ / Ω
-
-  T = promote_type(typeof.((dfdvz, dfdv⊥, a, z))...)
   (iszero(dfdvz) && iszero(dfdv⊥)) && return @MArray zeros(T, 3, 3)
 
-  Jadual, J_adual = besselj_v(MVector(a, -a), Dual(z, 1))
+  Jadual, J_adual = besselj_v(MVector(a, -a), Dual(z, 1); maxiters=2^12)
   Ja, Jad = DualNumbers.realpart(Jadual), DualNumbers.dualpart(Jadual)
   J_a, J_ad = DualNumbers.realpart(J_adual), DualNumbers.dualpart(J_adual)
   @assert isfinite(Ja)
@@ -59,7 +62,7 @@ function numerator(nc::NewbergerClassical, vz, v⊥)
   @assert isfinite(Jad)
   @assert isfinite(J_ad)
 
-  @cse begin
+  #@cse begin
     Q_a = π * J_a * Ja # Eq 33
     Qd_a = π * (J_ad * Ja + J_a * Jad) # Eq 33
     Xzz = 2π * Ω * vz * (v⊥ * dfdvz - vz * dfdv⊥) / Ω # Part of Eq 34 (x'ed by ω/Ω)
@@ -73,11 +76,12 @@ function numerator(nc::NewbergerClassical, vz, v⊥)
     T21 = -T12
     T31 = T13
     T32 = -T23
-  end
+  #end
   Tij = @MArray [T11 T12 T13; T21 T22 T23; T31 T32 T33]
   @assert all(isfinite, Tij) Tij
   Xij = (2π * U) .* Tij # Eq 34, part
   Xij[3, 3] += Xzz * sinπa
+#  Xij *= exp(709)
   return Xij # Eq 34 (U is multiplied by ω)
 end
 
@@ -90,7 +94,11 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
   cubartol = C.options.cubature_tol.rel
   nc = NewbergerClassical(S, ω, C.wavenumber)
 
-  deformation = imagcontourdeformation(ω / kz, real(kz) >= 0 ? 1 : -1)
+  nsmallestrealpart = round(Int, real(ω / Ω))
+  deformation = imagcontourdeformation((ω - nsmallestrealpart * Ω) / kz,
+                                       real(kz) >= 0 ? 1 : -1)
+  #deformation = imagcontourdeformation(ω / kz,
+  #                                     real(kz) >= 0 ? 1 : -1)
 
   function robustintegral2D()
     nc.count[] = 0

@@ -38,7 +38,7 @@ function numerator(nr::NewbergerRelativistic, pz⊥)
 
   γ = fγ(nr, pz⊥)
   a = fa(nr, pz⊥)
-  sinπa = sin(π * a)
+  sinπa = sinpi(a)
   γξ⊥ = p⊥ * k⊥ / m / Ω
 
   dfdpz = DualNumbers.dualpart(nr.species(Dual(pz, 1), p⊥))

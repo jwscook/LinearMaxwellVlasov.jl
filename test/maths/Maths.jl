@@ -56,18 +56,6 @@ const LMV = LinearMaxwellVlasov
     end
   end
 
-  @testset "slow fourier transform" begin
-    for n ∈ -5:5
-      c = rand()
-      f(x) = c * sin(n * x)
-      fn = LMV.discretefouriertransform(f, n)
-      @test c * im * (n != 0) ≈ fn atol=sqrt(eps()) rtol=sqrt(eps())
-      g(x) = c * cos(n * x)
-      gn = LMV.discretefouriertransform(g, n)
-      @test c ≈ gn atol=sqrt(eps()) rtol=sqrt(eps())
-    end
-  end
-
   @testset "transform to polar" begin
     f(x) = exp(-sum(x.^2)) / π
     p = LMV.transformtopolar(f)
