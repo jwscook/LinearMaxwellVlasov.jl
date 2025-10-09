@@ -54,7 +54,7 @@ function numerator(nc::NewbergerClassical, vz, v⊥)
   @assert isfinite(dfdv⊥)
   (iszero(dfdvz) && iszero(dfdv⊥)) && return @MArray zeros(T, 3, 3)
 
-  Jadual, J_adual = besselj_v(MVector(a, -a), Dual(z, 1); maxiters=2^12)
+  Jadual, J_adual = besselj_v(MVector(a, -a), Dual(z, 1); maxiters=2^20)
   Ja, Jad = DualNumbers.realpart(Jadual), DualNumbers.dualpart(Jadual)
   J_a, J_ad = DualNumbers.realpart(J_adual), DualNumbers.dualpart(J_adual)
   @assert isfinite(Ja)
@@ -81,7 +81,6 @@ function numerator(nc::NewbergerClassical, vz, v⊥)
   @assert all(isfinite, Tij) Tij
   Xij = (2π * U) .* Tij # Eq 34, part
   Xij[3, 3] += Xzz * sinπa
-#  Xij *= exp(709)
   return Xij # Eq 34 (U is multiplied by ω)
 end
 
@@ -96,24 +95,25 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
 
   nsmallestrealpart = round(Int, real(ω / Ω))
   deformation = imagcontourdeformation((ω - nsmallestrealpart * Ω) / kz,
-                                       real(kz) >= 0 ? 1 : -1)
-  #deformation = imagcontourdeformation(ω / kz,
-  #                                     real(kz) >= 0 ? 1 : -1)
+                                       real(kz) >= 0 ? 1 : -1,
+                                       C.options.cauchydeformationangle)
+  integralnorm = S.F.upper^2
 
   function robustintegral2D()
     nc.count[] = 0
 
     t1 = @elapsed output, integral2Derrorestimate = if S.F.lower == 0
-      HCubature.hcubature(vz⊥ -> nc((vz⊥[1] + im * deformation, vz⊥[2])),
-        (-4S.F.upper, 0.0), (4S.F.upper, 4S.F.upper), initdiv=16,
+      HCubature.hcubature(vz⊥ -> nc((vz⊥[1] + im * deformation, vz⊥[2])) ./ integralnorm,
+        (-S.F.upper, 0.0), (S.F.upper, S.F.upper), initdiv=32,
         rtol=cubartol, atol=cubaatol, maxevals=C.options.cubature_maxevals)
     else
       @assert S.F.lower > 0
-      ∫dvrdθ(vrθ) = vrθ[1] * nc(parallelperpfrompolar(vrθ) .+ (im * deformation, zero(vrθ[2])))
+      ∫dvrdθ(vrθ) = vrθ[1] * nc(parallelperpfrompolar(vrθ) .+ (im * deformation, zero(vrθ[2]))) ./ integralnorm
       HCubature.hcubature(∫dvrdθ,
-        (S.F.lower/4, -π / 2), (4S.F.upper, π / 2), initdiv=16,
+        (S.F.lower, -π / 2), (S.F.upper, π / 2), initdiv=32,
         rtol=cubartol, atol=cubaatol, maxevals=C.options.cubature_maxevals)
     end
+    output *= integralnorm
 
     if C.options.erroruponcubaturenonconformance
       msg = "error / val = $(integral2Derrorestimate / norm(output))"
@@ -125,7 +125,7 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
   end
 
   function perpendicularintegral(∫dv⊥::T, nrm=1) where T
-    return first(QuadGK.quadgk(∫dv⊥, S.F.lower/4, 4S.F.upper, order=7,
+    return first(QuadGK.quadgk(∫dv⊥, S.F.lower, S.F.upper, order=DEFAULT_QUADORDER_PARA,
       atol=max(C.options.quadrature_tol.abs, C.options.quadrature_tol.rel * nrm / 2),
       rtol=C.options.quadrature_tol.rel))
   end
@@ -134,12 +134,12 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
     function allresidues(n)
       pole = Pole(C.frequency, C.wavenumber, n, Ω, deformation)
       @assert pole.deformation == deformation
-      laurentnumerator(x) = -(-1)^n * Ω * numerator(nc, x, v⊥) / kz / π
+      laurentnumerator(x) = -(-1)^n * Ω * numerator(nc, x, v⊥) / kz / π / integralnorm
       output = residue(laurentnumerator, pole)
       @assert !any(isnan, output)
       return output
     end
-    return converge(allresidues, minharmonics(S), C.options.summation_tol)
+    return converge(allresidues, minharmonics(S), C.options.cubature_tol) * integralnorm
   end
 
   t1 = @elapsed robustintegral, deformation = robustintegral2D()
