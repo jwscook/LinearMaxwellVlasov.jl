@@ -83,8 +83,8 @@ struct SeparableVelocitySpecies{
   F⊥::T⊥
   minharmonics::Int
 end
-function SeparableVelocitySpecies(Π, Ω, Fz, F⊥)
-  return SeparableVelocitySpecies(Π, Ω, Fz, F⊥, DEFAULT_MIN_HARMONICS)
+function SeparableVelocitySpecies(Π, Ω, Fz, F⊥, minharmonics=DEFAULT_MIN_HARMONICS)
+  return SeparableVelocitySpecies(Π, Ω, Fz, F⊥, minharmonics)
 end
 (S::SeparableVelocitySpecies)(vz, v⊥) = S.Fz(vz) * S.F⊥(v⊥)
 
@@ -107,8 +107,8 @@ struct CoupledVelocitySpecies{
   F::TF
   minharmonics::Int
 end
-function CoupledVelocitySpecies(Π, Ω, F)
-  return CoupledVelocitySpecies(Π, Ω, F, DEFAULT_MIN_HARMONICS)
+function CoupledVelocitySpecies(Π, Ω, F, minharmonics=DEFAULT_MIN_HARMONICS)
+  return CoupledVelocitySpecies(Π, Ω, F, minharmonics)
 end
 (S::CoupledVelocitySpecies)(vz, v⊥) = S.F(vz, v⊥)
 """
@@ -126,9 +126,10 @@ end
 
 """
 function CoupledVelocitySpecies(Π::Float64, Ω::Float64, vthz::Float64,
-    vth⊥::Float64=vthz, vzdrift::Float64=0.0, v⊥drift::Float64=0.0)
+    vth⊥::Float64=vthz, vzdrift::Float64=0.0, v⊥drift::Float64=0.0,
+    minharmonics=DEFAULT_MIN_HARMONICS)
   return CoupledVelocitySpecies(Π, Ω,
-    FCoupledVelocityNumerical(vthz, vth⊥, vzdrift, v⊥drift))
+    FCoupledVelocityNumerical(vthz, vth⊥, vzdrift, v⊥drift), minharmonics)
 end
 
 """
@@ -157,8 +158,8 @@ struct CoupledRelativisticSpecies{
     return new{TΠ,TΩ,Tm,TF}(Π, Ω, m, F, h)
   end
 end
-function CoupledRelativisticSpecies(Π, Ω, m, F)
-  return CoupledRelativisticSpecies(Π, Ω, m, F, DEFAULT_MIN_HARMONICS)
+function CoupledRelativisticSpecies(Π, Ω, m, F, minharmonics=DEFAULT_MIN_HARMONICS)
+  return CoupledRelativisticSpecies(Π, Ω, m, F, minharmonics)
 end
 (S::CoupledRelativisticSpecies)(pz, p⊥) = S.F(pz, p⊥)
 
@@ -176,9 +177,10 @@ end
 ...
 
 """
-function CoupledRelativisticSpecies(Π, Ω, m, pthz::Number, pth⊥=pthz, pzdrift=0)
+function CoupledRelativisticSpecies(Π, Ω, m, pthz::Number, pth⊥=pthz, pzdrift=0,
+    minharmonics=DEFAULT_MIN_HARMONICS)
   return CoupledRelativisticSpecies(Π, Ω, m,
-    FRelativisticNumerical(pthz, pth⊥, pzdrift))
+    FRelativisticNumerical(pthz, pth⊥, pzdrift), minharmonics)
 end
 
 """
@@ -202,11 +204,12 @@ magnetic field
 ```julia
 ```
 """
-function MaxwellianSpecies(Π, Ω, vthb, vth⊥=vthb, vdb=0.0)
+function MaxwellianSpecies(Π, Ω, vthb, vth⊥=vthb, vdb=0.0,
+    minharmonics=DEFAULT_MIN_HARMONICS)
   @assert vthb > 0.0 && vth⊥ > 0.0
   Fz = FBeam(vthb, vdb)
   F⊥ = FPerpendicularMaxwellian(vth⊥)
-  return SeparableVelocitySpecies(Π, Ω, Fz, F⊥)
+  return SeparableVelocitySpecies(Π, Ω, Fz, F⊥, minharmonics)
 end
 
 """
@@ -230,11 +233,12 @@ a ring respectively.
 ```julia
 ```
 """
-function RingBeamSpecies(Π, Ω, vthb, vth⊥=vthb, vdb=0.0, vd⊥=0.0)
+function RingBeamSpecies(Π, Ω, vthb, vth⊥=vthb, vdb=0.0, vd⊥=0.0,
+    minharmonics=DEFAULT_MIN_HARMONICS)
   @assert vthb > 0.0 && vth⊥ > 0.0
   Fz = FBeam(vthb, vdb)
   F⊥ = FRing(vth⊥, vd⊥)
-  return SeparableVelocitySpecies(Π, Ω, Fz, F⊥)
+  return SeparableVelocitySpecies(Π, Ω, Fz, F⊥, minharmonics)
 end
 
 plasmafrequency(S::AbstractSpecies) = S.Π

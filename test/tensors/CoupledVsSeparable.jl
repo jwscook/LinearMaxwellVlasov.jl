@@ -25,12 +25,14 @@ Random.seed!(0)
     vth = thermalspeed(ϵV, m)
     λD = vth / Π
 
-    argsM = ones(3) * vth
-    coupledMaxwellian = CoupledVelocitySpecies(Π, Ω, argsM...)
-    separableMaxwellian = MaxwellianSpecies(Π, Ω, argsM...)
-    argsR = ones(4) * vth
-    coupledRingBeam = CoupledVelocitySpecies(Π, Ω, argsR...)
-    separableRingBeam = RingBeamSpecies(Π, Ω, argsR...)
+    vd = 1
+    argsM = [1, 1, vd, 0] * vth
+    coupledMaxwellian = CoupledVelocitySpecies(Π, Ω, argsM..., 4)
+    argsM = [1, 1, vd] * vth
+    separableMaxwellian = MaxwellianSpecies(Π, Ω, argsM..., 4)
+    argsR = [1, 1, vd, vd] * vth
+    coupledRingBeam = CoupledVelocitySpecies(Π, Ω, argsR..., 4)
+    separableRingBeam = RingBeamSpecies(Π, Ω, argsR..., 4)
     norms = []
 
     for (coupled, separable) ∈ (

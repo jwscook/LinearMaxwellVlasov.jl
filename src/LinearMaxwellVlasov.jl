@@ -7,7 +7,7 @@ const c₀ = 2.99792458e8 # speed of light, SI units [m/s]
 const μ₀ = 1.25663706144e-6 # magnetic constant / permeability, SI units [N/A²]
 
 const DEFAULT_INTEGRAL_RANGE = 12
-const DEFAULT_MIN_HARMONICS = 1
+const DEFAULT_MIN_HARMONICS = 2
 const DEFAULT_CAUCHY_DEFORMATION_ANGLE = 1e-6
 
 const DEFAULT_QUADORDER = 32
