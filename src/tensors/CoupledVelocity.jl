@@ -17,7 +17,7 @@ NewbergerClassical(s, ω, k::Wavenumber) = NewbergerClassical(s, ω, k, Ref(0))
 function denominator(nc::NewbergerClassical, vz, v⊥)
   a = pseudoharmonic(nc, vz)
   sinπa = sinpi(a)
-  @assert isfinite(sinπa) "a = $a, vz = $vz"
+  @assert !isnan(sinπa) "a = $a, vz = $vz"
   return sinπa
 end
 
@@ -49,18 +49,18 @@ function numerator(nc::NewbergerClassical, vz, v⊥)
   iszero(f) && return @MArray zeros(T, 3, 3)
 
   dfdvz = DualNumbers.dualpart(S(Dual(vz, 1), v⊥))
-  @assert isfinite(dfdvz)
+  @assert !isnan(dfdvz)
   dfdv⊥ = DualNumbers.dualpart(S(vz, Dual(v⊥, 1)))
-  @assert isfinite(dfdv⊥)
+  @assert !isnan(dfdv⊥)
   (iszero(dfdvz) && iszero(dfdv⊥)) && return @MArray zeros(T, 3, 3)
 
   Jadual, J_adual = besselj_v(MVector(a, -a), Dual(z, 1); maxiters=2^20)
   Ja, Jad = DualNumbers.realpart(Jadual), DualNumbers.dualpart(Jadual)
   J_a, J_ad = DualNumbers.realpart(J_adual), DualNumbers.dualpart(J_adual)
-  @assert isfinite(Ja)
-  @assert isfinite(J_a)
-  @assert isfinite(Jad)
-  @assert isfinite(J_ad)
+  @assert !isnan(Ja)
+  @assert !isnan(J_a)
+  @assert !isnan(Jad)
+  @assert !isnan(J_ad)
 
   #@cse begin
     Q_a = π * J_a * Ja # Eq 33
@@ -78,9 +78,9 @@ function numerator(nc::NewbergerClassical, vz, v⊥)
     T32 = -T23
   #end
   Tij = @MArray [T11 T12 T13; T21 T22 T23; T31 T32 T33]
-  @assert all(isfinite, Tij) Tij
   Xij = (2π * U) .* Tij # Eq 34, part
   Xij[3, 3] += Xzz * sinπa
+  @assert !any(isnan, Xij) (Xij, vz, v⊥)
   return Xij # Eq 34 (U is multiplied by ω)
 end
 
@@ -124,32 +124,29 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
     return output, deformation
   end
 
-  function perpendicularintegral(∫dv⊥::T, nrm=1) where T
-    return first(QuadGK.quadgk(∫dv⊥, S.F.lower, S.F.upper, order=DEFAULT_QUADORDER_PARA,
-      atol=max(C.options.quadrature_tol.abs, C.options.quadrature_tol.rel * nrm / 2),
-      rtol=C.options.quadrature_tol.rel))
-  end
-
-  function robustcoupledresidue(v⊥, ::Type{T0}, deformation)::T0 where T0
-    function allresidues(n)
-      pole = Pole(C.frequency, C.wavenumber, n, Ω, deformation)
-      @assert pole.deformation == deformation
+  function residueperharmonic(n, ::Type{T0})::T0 where T0
+    pole = Pole(C.frequency, C.wavenumber, n, Ω, deformation)
+    @assert pole.deformation == deformation
+    function inner(v⊥)
       laurentnumerator(x) = -(-1)^n * Ω * numerator(nc, x, v⊥) / kz / π / integralnorm
       output = residue(laurentnumerator, pole)
       @assert !any(isnan, output)
       return output
     end
-    return converge(allresidues, minharmonics(S), C.options.cubature_tol) * integralnorm
+    lv⊥ = sqrt(max(S.F.lower^2 - real(pole)^2, 0.0))
+    uv⊥ = sqrt(max(S.F.upper^2 - real(pole)^2, 0.0))
+    lv⊥ >= uv⊥ && return zero(T0)
+    return first(QuadGK.quadgk(inner, lv⊥, uv⊥, order=DEFAULT_QUADORDER_PERP,
+      atol=C.options.quadrature_tol.abs, rtol=C.options.quadrature_tol.rel))
   end
 
-  t1 = @elapsed robustintegral, deformation = robustintegral2D()
-  result = robustintegral
+  function robustresidue(firstpart)
+    res = converge(n->residueperharmonic(n, typeof(firstpart)), minharmonics(S), C.options.cubature_tol) * integralnorm
+  end
+
+  t1 = @elapsed result, deformation = robustintegral2D()
   t2 = @elapsed if !iszero(kz)
-    res = perpendicularintegral(
-      v⊥->robustcoupledresidue(v⊥, typeof(robustintegral), deformation),
-      norm(robustintegral))
-    result += res
+    result += robustresidue(result)
   end
-
   return result
 end
