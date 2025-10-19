@@ -106,7 +106,7 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
         rtol=cubartol, atol=cubaatol, maxevals=C.options.cubature_maxevals)
     else
       @assert S.F.lower > 0
-      ∫dvrdθ(vrθ) = vrθ[1] * nc(parallelperpfrompolar(vrθ) .+ (im * deformation, zero(vrθ[2])))
+      ∫dvrdθ(vrθ) = vrθ[1] * nc(parallelperpfrompolar(vrθ) .+ (im * deformation, 0))
       HCubature.hcubature(∫dvrdθ,
         (S.F.lower, -π / 2), (S.F.upper, π / 2), initdiv=32,
         rtol=cubartol, atol=cubaatol, maxevals=C.options.cubature_maxevals)
@@ -114,7 +114,7 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
 
     if C.options.erroruponcubaturenonconformance
       msg = "error / val = $(integral2Derrorestimate / norm(output))"
-      msg *= ", count = $(nc.count[]), time=$t1"
+      msg *= ", count = $(nc.count[]), time=$t1 seconds"
       @assert ((nc.count[] < C.options.cubature_maxevals) ||
         integral2Derrorestimate < max(cubartol * norm(output), cubaatol)) msg
     end
@@ -145,5 +145,6 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
   t2 = @elapsed if !iszero(kz)
     result += robustresidue(result)
   end
+
   return result
 end
