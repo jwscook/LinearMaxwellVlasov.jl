@@ -132,13 +132,13 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
     end
     lv⊥ = sqrt(max(S.F.lower^2 - real(pole)^2, 0.0))
     uv⊥ = sqrt(max(S.F.upper^2 - real(pole)^2, 0.0))
-    lv⊥ >= uv⊥ && return zero(T0)
+    lv⊥ == uv⊥ && return zero(T0)
     return first(QuadGK.quadgk(inner, lv⊥, uv⊥, order=DEFAULT_QUADORDER_PERP,
       atol=max(cubaatol, cubartol * norm(firstpart)), rtol=cubartol))
   end
 
   function robustresidue(firstpart)
-    res = converge(n->residueperharmonic(n, firstpart), minharmonics(S), C.options.cubature_tol)
+    return converge(n->residueperharmonic(n, firstpart), minharmonics(S), C.options.cubature_tol)
   end
 
   t1 = @elapsed result, deformation = robustintegral2D()
