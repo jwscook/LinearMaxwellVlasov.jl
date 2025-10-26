@@ -23,9 +23,9 @@ end
 
 function pseudoharmonic(nc::NewbergerClassical, vz)
   ω = nc.ω
-  Ω = nc.species.Ω
+  invΩ = 1 / nc.species.Ω
   kz = para(nc.k)
-  a = (ω / Ω - kz * vz / Ω)
+  a = (ω * invΩ - kz * vz * invΩ) # do this way for floating point accuracy
   return a
 end
 
@@ -62,7 +62,7 @@ function numerator(nc::NewbergerClassical, vz, v⊥)
   @assert !isnan(Jad)
   @assert !isnan(J_ad)
 
-  #@cse begin
+  @cse begin
     Q_a = π * J_a * Ja # Eq 33
     Qd_a = π * (J_ad * Ja + J_a * Jad) # Eq 33
     Xzz = 2π * Ω * vz * (v⊥ * dfdvz - vz * dfdv⊥) / Ω # Part of Eq 34 (x'ed by ω/Ω)
@@ -76,7 +76,7 @@ function numerator(nc::NewbergerClassical, vz, v⊥)
     T21 = -T12
     T31 = T13
     T32 = -T23
-  #end
+  end
   Tij = @MArray [T11 T12 T13; T21 T22 T23; T31 T32 T33]
   Xij = (2π * U) .* Tij # Eq 34, part
   Xij[3, 3] += Xzz * sinπa
