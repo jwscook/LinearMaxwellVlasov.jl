@@ -1,7 +1,6 @@
 using DualNumbers, LinearAlgebra, MuladdMacro, SpecialFunctions, StaticArrays
 using CommonSubexpressions, HypergeometricFunctions
 
-derivative(f::T) where {T} = x -> DualNumbers.dualpart(f(Dual(x, 1)))
 derivative(f::T, x::Number) where {T} = DualNumbers.dualpart(f(Dual(x, 1)))
 
 import Base.^

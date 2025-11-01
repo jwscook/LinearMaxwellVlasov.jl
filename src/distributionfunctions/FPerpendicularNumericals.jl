@@ -62,7 +62,7 @@ function FPerpendicularNumerical(f::T, lower::Float64, upper::Float64
   n == 1 && return FPerpendicularNumerical(f, derivative(f), lower, upper)
   invn = 1 / n
   fn(v) = f(v) * invn
-  gn = derivative(fn)
+  gn(v) = derivative(fn, v)
   return FPerpendicularNumerical(fn, gn, lower, upper)
 end
 
