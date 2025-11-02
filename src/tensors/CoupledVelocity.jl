@@ -57,8 +57,8 @@ function numerator(nc::NewbergerClassical, vz, v⊥)
   Jadual, J_adual = besselj_v(MVector(a, -a), Dual(z, 1); maxiters=2^20)
   Ja, Jad = DualNumbers.realpart(Jadual), DualNumbers.dualpart(Jadual)
   J_a, J_ad = DualNumbers.realpart(J_adual), DualNumbers.dualpart(J_adual)
-  @assert !isnan(Ja)
-  @assert !isnan(J_a)
+  @assert !isnan(Ja) ("!isnan(Ja)", dfdvz, dfdv⊥, Ja, Jad, J_a, J_ad)
+  @assert !isnan(J_a) ("!isnan(J_a)", dfdvz, dfdv⊥, Ja, Jad, J_a, J_ad)
   @assert !isnan(Jad)
   @assert !isnan(J_ad)
 
@@ -133,7 +133,7 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
     lv⊥ = sqrt(max(S.F.lower^2 - real(pole)^2, 0.0))
     uv⊥ = sqrt(max(S.F.upper^2 - real(pole)^2, 0.0))
     lv⊥ == uv⊥ && return zero(T0)
-    return first(QuadGK.quadgk(inner, lv⊥, uv⊥, order=DEFAULT_QUADORDER_PERP,
+    return first(QuadGK.quadgk(inner, lv⊥, uv⊥; order=DEFAULT_QUADORDER_PERP,
       atol=max(cubaatol, cubartol * norm(firstpart)), rtol=cubartol))
   end
 
