@@ -17,7 +17,7 @@ SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [sources]
-GeneralBesselj = {rev = "main", url = "git@github.com:jwscook/GeneralBesselj.jl.git"}
+GeneralBesselj = {rev = "main", url = "https://github.com/jwscook/GeneralBesselj.jl"}
 PlasmaDispersionFunctions = {rev = "main", url = "https://github.com/jwscook/PlasmaDispersionFunctions.jl"}
 
 [compat]
