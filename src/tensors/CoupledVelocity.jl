@@ -45,13 +45,13 @@ function numerator(nc::NewbergerClassical, vz, v⊥)
 
   f = S(real(vz), v⊥)
   T = promote_type(typeof.((f, a, z))...)
-  # if the real part of f is zero, then there are no particles at (vz, v⊥)
-  iszero(f) && return @MArray zeros(T, 3, 3)
+  # if the real part of f squared is zero, then there are no particles at (vz, v⊥)
+  iszero(f^2) && return @MArray zeros(T, 3, 3)
 
   dfdvz = DualNumbers.dualpart(S(Dual(vz, 1), v⊥))
-  @assert !isnan(dfdvz)
+  @assert !isnan(dfdvz) ("!isnan(dfdvz)", vz, v⊥)
   dfdv⊥ = DualNumbers.dualpart(S(vz, Dual(v⊥, 1)))
-  @assert !isnan(dfdv⊥)
+  @assert !isnan(dfdv⊥) ("!isnan(dfdv⊥)", vz, v⊥)
   (iszero(dfdvz) && iszero(dfdv⊥)) && return @MArray zeros(T, 3, 3)
 
   Jadual, J_adual = besselj_v(MVector(a, -a), Dual(z, 1); maxiters=2^20)
@@ -59,8 +59,8 @@ function numerator(nc::NewbergerClassical, vz, v⊥)
   J_a, J_ad = DualNumbers.realpart(J_adual), DualNumbers.dualpart(J_adual)
   @assert !isnan(Ja) ("!isnan(Ja)", dfdvz, dfdv⊥, Ja, Jad, J_a, J_ad)
   @assert !isnan(J_a) ("!isnan(J_a)", dfdvz, dfdv⊥, Ja, Jad, J_a, J_ad)
-  @assert !isnan(Jad)
-  @assert !isnan(J_ad)
+  @assert !isnan(Jad) ("!isnan(Jad)", dfdvz, dfdv⊥, Ja, Jad, J_a, J_ad)
+  @assert !isnan(J_ad) ("!isnan(J_ad)", dfdvz, dfdv⊥, Ja, Jad, J_a, J_ad)
 
   @cse begin
     Q_a = π * J_a * Ja # Eq 33

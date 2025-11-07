@@ -79,7 +79,7 @@ function imagcontourdeformation(pole, causalsign, θ=DEFAULT_CAUCHY_DEFORMATION_
   else
     -one(r)
   end
-  @assert deformation <= 0  "pole, θ, deformation = $pole, $θ, $deformation"
+  @assert deformation <= 0 "pole, θ, deformation = $pole, $θ, $deformation"
   @assert !iszero(i + deformation) "pole, θ, deformation = $pole, $θ, $deformation"
   return deformation * causalsign
 end
