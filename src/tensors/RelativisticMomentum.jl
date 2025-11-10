@@ -219,7 +219,7 @@ function relativisticmomentum(S::CoupledRelativisticSpecies, C::Configuration)
     #  (-Inf, 0), (Inf, Inf), initdiv=16,
     #  rtol=cubartol, atol=cubaatol, maxevals=C.options.cubature_maxevals)
     #output /= pchar
-    if C.options.erroruponcubaturenonconformance
+    if C.options.erroruponcubaturenonconvergence
       @assert (integrand.count[] < C.options.cubature_maxevals) ||
         errorestimate < max(cubartol * norm(output), cubaatol)
     end

@@ -43,7 +43,7 @@ struct WarmSpecies{TΠ<:Number, TΩ<:Number, V<:Number} <: AbstractFluidSpecies
 end
 
 """
-    WarmSpecies(Π::Float64,Ω::Float64,thermalspeed::Float64,adiabiaticindex::Number)
+    WarmSpecies(Π,Ω,thermalspeed,adiabiaticindex::Number)
 
 Warm plasma species - accept thermalspeed and ratio of specific heats to get
 sound speed
@@ -83,7 +83,7 @@ struct SeparableVelocitySpecies{
   F⊥::T⊥
   minharmonics::Int
 end
-function SeparableVelocitySpecies(Π, Ω, Fz, F⊥, minharmonics=DEFAULT_MIN_HARMONICS)
+function SeparableVelocitySpecies(Π, Ω, Fz, F⊥; minharmonics=DEFAULT_MIN_HARMONICS)
   return SeparableVelocitySpecies(Π, Ω, Fz, F⊥, minharmonics)
 end
 (S::SeparableVelocitySpecies)(vz, v⊥) = S.Fz(vz) * S.F⊥(v⊥)
@@ -107,29 +107,28 @@ struct CoupledVelocitySpecies{
   F::TF
   minharmonics::Int
 end
-function CoupledVelocitySpecies(Π, Ω, F, minharmonics=DEFAULT_MIN_HARMONICS)
+function CoupledVelocitySpecies(Π, Ω, F::AbstractCoupledVelocity; minharmonics=DEFAULT_MIN_HARMONICS)
   return CoupledVelocitySpecies(Π, Ω, F, minharmonics)
 end
 (S::CoupledVelocitySpecies)(vz, v⊥) = S.F(vz, v⊥)
 """
-    CoupledVelocitySpecies(Π::Float64,Ω::Float64,vthz::Float64,vth⊥::Float64=vthz,vzdrift::Float64=0.0,v⊥drift::Float64=0.0)
+    CoupledVelocitySpecies(Π,Ω,vthz,vth⊥=vthz,vzdrift=0.0,v⊥drift=0.0)
 
 ...
 # Arguments
-- `Π::Float64`: plasma frequency [rad/s]
-- `Ω::Float64`: cyclotron frequency [rad/s]
-- `vthz::Float64`: parallel thermal speed [m/s]
-- `vth⊥::Float64=vthz`: perpendicular thermal speed [m/s]
-- `vzdrift::Float64=0.0`: parallel bulk speed [m/s]
-- `v⊥drift::Float64=0.0`: perpendicular bulk speed [m/s]
+- `Π`: plasma frequency [rad/s]
+- `Ω`: cyclotron frequency [rad/s]
+- `vthz`: parallel thermal speed [m/s]
+- `vth⊥=vthz`: perpendicular thermal speed [m/s]
+- `vzdrift=0.0`: parallel bulk speed [m/s]
+- `v⊥drift=0.0`: perpendicular bulk speed [m/s]
 ...
 
 """
-function CoupledVelocitySpecies(Π::Float64, Ω::Float64, vthz::Float64,
-    vth⊥::Float64=vthz, vzdrift::Float64=0.0, v⊥drift::Float64=0.0,
+function CoupledVelocitySpecies(Π, Ω, vthz, vth⊥=vthz, vzdrift=0.0, v⊥drift=0.0;
     minharmonics=DEFAULT_MIN_HARMONICS)
   return CoupledVelocitySpecies(Π, Ω,
-    FCoupledVelocityNumerical(vthz, vth⊥, vzdrift, v⊥drift), minharmonics)
+    FCoupledVelocityNumerical(vthz, vth⊥, vzdrift, v⊥drift); minharmonics)
 end
 
 """
@@ -158,7 +157,7 @@ struct CoupledRelativisticSpecies{
     return new{TΠ,TΩ,Tm,TF}(Π, Ω, m, F, h)
   end
 end
-function CoupledRelativisticSpecies(Π, Ω, m, F, minharmonics=DEFAULT_MIN_HARMONICS)
+function CoupledRelativisticSpecies(Π, Ω, m, F; minharmonics=DEFAULT_MIN_HARMONICS)
   return CoupledRelativisticSpecies(Π, Ω, m, F, minharmonics)
 end
 (S::CoupledRelativisticSpecies)(pz, p⊥) = S.F(pz, p⊥)
@@ -177,10 +176,10 @@ end
 ...
 
 """
-function CoupledRelativisticSpecies(Π, Ω, m, pthz::Number, pth⊥=pthz, pzdrift=0,
+function CoupledRelativisticSpecies(Π, Ω, m, pthz::Number, pth⊥=pthz, pzdrift=0;
     minharmonics=DEFAULT_MIN_HARMONICS)
   return CoupledRelativisticSpecies(Π, Ω, m,
-    FRelativisticNumerical(pthz, pth⊥, pzdrift), minharmonics)
+    FRelativisticNumerical(pthz, pth⊥, pzdrift); minharmonics)
 end
 
 """
@@ -204,7 +203,7 @@ magnetic field
 ```julia
 ```
 """
-function MaxwellianSpecies(Π, Ω, vthb, vth⊥=vthb, vdb=0.0,
+function MaxwellianSpecies(Π, Ω, vthb, vth⊥=vthb, vdb=0.0;
     minharmonics=DEFAULT_MIN_HARMONICS)
   @assert vthb > 0.0 && vth⊥ > 0.0
   Fz = FBeam(vthb, vdb)
@@ -233,7 +232,7 @@ a ring respectively.
 ```julia
 ```
 """
-function RingBeamSpecies(Π, Ω, vthb, vth⊥=vthb, vdb=0.0, vd⊥=0.0,
+function RingBeamSpecies(Π, Ω, vthb, vth⊥=vthb, vdb=0.0, vd⊥=0.0;
     minharmonics=DEFAULT_MIN_HARMONICS)
   @assert vthb > 0.0 && vth⊥ > 0.0
   Fz = FBeam(vthb, vdb)

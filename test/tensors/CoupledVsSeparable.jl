@@ -27,12 +27,12 @@ Random.seed!(0)
 
     vd = 1
     argsM = [1, 1, vd, 0] * vth
-    coupledMaxwellian = CoupledVelocitySpecies(Π, Ω, argsM..., 4)
+    coupledMaxwellian = CoupledVelocitySpecies(Π, Ω, argsM...; minharmonics=4)
     argsM = [1, 1, vd] * vth
-    separableMaxwellian = MaxwellianSpecies(Π, Ω, argsM..., 4)
+    separableMaxwellian = MaxwellianSpecies(Π, Ω, argsM...; minharmonics=4)
     argsR = [1, 1, vd, vd] * vth
-    coupledRingBeam = CoupledVelocitySpecies(Π, Ω, argsR..., 4)
-    separableRingBeam = RingBeamSpecies(Π, Ω, argsR..., 4)
+    coupledRingBeam = CoupledVelocitySpecies(Π, Ω, argsR...; minharmonics=4)
+    separableRingBeam = RingBeamSpecies(Π, Ω, argsR...; minharmonics=4)
     norms = []
 
     for (coupled, separable) ∈ (

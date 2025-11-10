@@ -112,7 +112,7 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
         rtol=cubartol, atol=cubaatol, maxevals=C.options.cubature_maxevals)
     end
 
-    if C.options.erroruponcubaturenonconformance
+    if C.options.erroruponcubaturenonconvergence
       msg = "error / val = $(integral2Derrorestimate / norm(output))"
       msg *= ", count = $(nc.count[]), time=$t1 seconds"
       @assert ((nc.count[] < C.options.cubature_maxevals) ||

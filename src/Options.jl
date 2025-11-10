@@ -7,7 +7,7 @@ struct Options{T<:Number}
   memoiseperpendicular::Bool
   cubature_maxevals::Int
   residue_maxevals::Int
-  erroruponcubaturenonconformance::Bool
+  erroruponcubaturenonconvergence::Bool
   cauchydeformationangle::Float64
   _uniqueid::UInt64
   function Options(quadrature_tol::Tolerance{T},
@@ -15,15 +15,15 @@ struct Options{T<:Number}
       summation_tol::Tolerance{T},
       memoiseparallel::Bool, memoiseperpendicular::Bool,
       cubature_maxevals::Int, residue_maxevals::Int,
-      erroruponcubaturenonconformance::Bool,
+      erroruponcubaturenonconvergence::Bool,
       cauchydeformationangle::Float64) where {T<:Number}
     _uniqueid = hash((quadrature_tol, cubature_tol, summation_tol,
       memoiseparallel, memoiseperpendicular, cubature_maxevals, residue_maxevals,
-      erroruponcubaturenonconformance, cauchydeformationangle),
+      erroruponcubaturenonconvergence, cauchydeformationangle),
       hash(:Options))
     return new{T}(quadrature_tol, cubature_tol, summation_tol,
       memoiseparallel, memoiseperpendicular, cubature_maxevals, residue_maxevals,
-      erroruponcubaturenonconformance, cauchydeformationangle, _uniqueid)
+      erroruponcubaturenonconvergence, cauchydeformationangle, _uniqueid)
   end
 end
 uniqueid(o::Options) = o._uniqueid
@@ -51,7 +51,7 @@ function defaults(::Type{T}=Float64) where {T}
   output[:memoiseperpendicular] = true
   output[:cubature_maxevals] = typemax(Int)
   output[:residue_maxevals] = typemax(Int)
-  output[:erroruponcubaturenonconformance] = true
+  output[:erroruponcubaturenonconvergence] = true
   output[:cauchydeformationangle] = DEFAULT_CAUCHY_DEFORMATION_ANGLE
   return output
 end
@@ -84,7 +84,7 @@ function Options(::Type{T}=Float64; kwargstuple...) where {T}
     :rtols => (:quadrature_rtol, :summation_rtol, :cubature_rtol),
     :cuba_evals => :cubature_maxevals,
     :res_evals => :residue_maxevals,
-    :error_cuba => :erroruponcubaturenonconformance,
+    :error_cuba => :erroruponcubaturenonconvergence,
     :deformationangle => :cauchydeformationangle
    )
 
@@ -106,5 +106,5 @@ function Options(::Type{T}=Float64; kwargstuple...) where {T}
   return Options(quadrature_tol, cubature_tol, summation_tol,
     args[:memoiseparallel], args[:memoiseperpendicular],
     args[:cubature_maxevals], args[:residue_maxevals],
-    args[:erroruponcubaturenonconformance], args[:cauchydeformationangle])
+    args[:erroruponcubaturenonconvergence], args[:cauchydeformationangle])
 end
