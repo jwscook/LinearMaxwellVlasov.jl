@@ -130,8 +130,8 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
       @assert !any(isnan, output)
       return output
     end
-    lv⊥ = sqrt(max(S.F.lower^2 - real(pole)^2, 0.0))
-    uv⊥ = sqrt(max(S.F.upper^2 - real(pole)^2, 0.0))
+    lv⊥ = sqrt(max(S.F.lower^2 - abs2(pole), 0.0)) # abs2 to stop imag part blowing up f
+    uv⊥ = sqrt(max(S.F.upper^2 - abs2(pole), 0.0)) # abs2 to stop imag part blowing up f
     lv⊥ == uv⊥ && return zero(T0)
     return first(QuadGK.quadgk(inner, lv⊥, uv⊥; order=DEFAULT_QUADORDER_PERP,
       atol=max(cubaatol, cubartol * norm(firstpart)), rtol=cubartol))
