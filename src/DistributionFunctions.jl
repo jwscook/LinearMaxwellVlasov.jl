@@ -61,8 +61,13 @@ function integrate(f::AbstractFParallelNumerical, numerator_kernel::T,
   # No pole on this integral, therefore no residue
   fv = f(∂F∂v) # TODO
   integrand(v) = fv(v) * numerator_kernel(v)
-  return first(QuadGK.quadgk(integrand, f.lower, f.upper,
-    rtol=tol.rel, atol=tol.abs, order=DEFAULT_QUADORDER_PARA, norm=quadnorm))
+  if f.upper == -f.lower
+    return first(QuadGK.quadgk(v->integrand(v) + integrand(-v), 0.0, f.upper,
+      rtol=tol.rel, atol=tol.abs, order=DEFAULT_QUADORDER_PARA, norm=quadnorm))
+  else
+    return first(QuadGK.quadgk(integrand, f.lower, f.upper,
+      rtol=tol.rel, atol=tol.abs, order=DEFAULT_QUADORDER_PARA, norm=quadnorm))
+  end
 end
 
 """
