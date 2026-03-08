@@ -146,7 +146,7 @@ function contribution(species::AbstractSeparableVelocitySpecies,
 
   f = n -> contribution(species, config, n, ∫para, ∫perp)
 
-  return converge(f, config.options.summation_tol)
+  return converge(f, minharmonics(species), config.options.summation_tol)
 end
 
 """
@@ -158,7 +158,7 @@ function contribution(species::AbstractKineticSpecies, config::Configuration,
 
   f = n -> contribution(species, config, n)
 
-  return converge(f, config.options.summation_tol)
+  return converge(f, minharmonics(species), config.options.summation_tol)
 end
 
 """
@@ -200,12 +200,19 @@ function tensor(plasma::AbstractPlasma, config::Configuration,
 end
 
 """
-The electrostatic dielectric tensor for a given plasma, a zero valued
+The electrostatic dispersion value for a given plasma, a zero valued
 determinant of which represents a solution to the linear
 poisson-vlasov system of equations
+    k ⋅ϵ ⋅k
 """
-function electrostatictensor(plasma::AbstractPlasma, config::Configuration,
+function electrostatic(plasma::AbstractPlasma, config::Configuration,
     cache::Cache=Cache())
-  return dielectric(plasma, config, cache)
+  k = cartesian_vector(config.wavenumber)
+  ϵ = dielectric(plasma, config, cache)
+  output = zero(eltype(ϵ))
+  for i in 1:3, j in 1:3
+    output += k[i] * ϵ[i, j] * k[j]
+  end
+  return output
 end
 

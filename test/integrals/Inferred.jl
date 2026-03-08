@@ -22,9 +22,10 @@ const DPR = LinearMaxwellVlasov
   @testset "Parallel" begin
     for species ∈ (unitR, unitN, unitD)
       try
-        @inferred LMV.parallel(species, C, 0, Unsigned(1), false)
+        @inferred LinearMaxwellVlasov.parallel(species, C, 0, Unsigned(1), false)
         @test true
-      catch
+      catch err
+        @info err
         @test false
       end
     end
@@ -33,9 +34,10 @@ const DPR = LinearMaxwellVlasov
   @testset "Perpendicular" begin
     for species ∈ (unitR, unitN, unitD)
       try
-        @inferred LMV.perpendicular(species, C, 0, 0, Unsigned(1), false)
+        @inferred LinearMaxwellVlasov.perpendicular(species, C, 0, 0, Unsigned(1), false)
         @test true
-      catch
+      catch err
+        @info err
         @test false
       end
     end

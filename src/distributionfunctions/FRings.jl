@@ -32,5 +32,5 @@ end
 (f::FRing)(∂F∂v::Bool=false) = v -> f.F(v, ∂F∂v)
 
 is_normalised(f::FRing) = true
-lower(f::FRing) = max(0.0, f.vd - default_integral_range * f.vth)
-upper(f::FRing) = f.vd + default_integral_range * f.vth
+lower(f::FRing) = max(0.0, f.vd - DEFAULT_INTEGRAL_RANGE * f.vth)
+upper(f::FRing) = f.vd + DEFAULT_INTEGRAL_RANGE * f.vth

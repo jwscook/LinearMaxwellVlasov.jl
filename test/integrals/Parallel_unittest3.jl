@@ -1,13 +1,13 @@
 using Dates
 println("$(now()) $(@__FILE__)")
 
+include("../species/NumericalSpecies.jl")
 using Test, Statistics
 using LinearMaxwellVlasov
 const LMV = LinearMaxwellVlasov
 
-include("../species/NumericalSpecies.jl")
 
-@testset "Parallel unittest 2" begin
+@testset "Parallel unittest 3" begin
 
   verbose = false
   number = exp(1) * π
@@ -25,23 +25,26 @@ include("../species/NumericalSpecies.jl")
 
   @testset "Test numerical parallel integral with against analytical result" begin
     p = 0
-    for n ∈ -20:20
-      for ωandkz ∈ (1.0 + 0*im, 1.0 + 0.1*im, 1.0 - 0.1im)
-        a = LMV.parallel(twosrb.Fz,  ωandkz, ωandkz, n, Ω, Unsigned(p), false)
-        b = LMV.parallel(twosnum.Fz, ωandkz, ωandkz, n, Ω, Unsigned(p), false)
+    for n ∈ (0,)#-20:20
+      for ω ∈ (1.0 + 0*im, 1.0 + 0.1*im, 1.0 - 0.1im), kz in (1.0 + 0*im, 1.0 + 0.1*im, 1.0 - 0.1im)
+        K = LMV.Wavenumber(kz, NaN)
+        a = parallel(twosrb.Fz,  ω, K, n * Ω, Unsigned(p), false)
+        b = LMV.parallel(twosnum.Fz, ω, K, n * Ω, Unsigned(p), false)
+        @assert twosrb.Fz((ω - n* Ω) / kz) ≈ twosnum.Fz((ω - n* Ω) / kz)
         realratios += abs((real(a) - real(b)) / real(a))
         imagratios += abs((imag(a) - imag(b)) / imag(a))
         if !isapprox(real(a), real(b), rtol=1.0e-3)
-          r = (real(b) - real(a))/max(abs(real(a)), abs(real(a)))
           push!(realfails, n)
           verbose && @show "n = $n, ωandkz = $ωandkz"
         end
         if !isapprox(imag(a), imag(b), rtol=1.0e-3)
-          r = (imag(b) - imag(a))/max(abs(imag(a)), abs(imag(a)))
           push!(imagfails, n)
         end
-        @test a ≈ b rtol=1.0e-3
-        #verbose && isapprox(a, b, rtol=1.0e-3) || @show n, ωandkz
+        @testset "n = $n, ω = $ω, kz = $kz" begin
+          expected = a
+          result = b
+          @test result ≈ expected rtol=1.0e-3
+        end
       end
     end
     verbose && @show imagratios

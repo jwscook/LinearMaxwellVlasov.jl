@@ -39,9 +39,9 @@ const LMV = LinearMaxwellVlasov
     return (Float64(big) + imaginary) / (vth * sqrt(2*pi))
     #return exp.(-0.5*((v-vd)/vth).^2 - log(vth * sqrt(2*pi)))
   end
-  vIb0 = parallel(Fz, ω, KPara, h, Ωα, Unsigned.(0), false)
-  vIb1 = parallel(Fz, ω, KPara, h, Ωα, Unsigned.(1), false)
-  vIb2 = parallel(Fz, ω, KPara, h, Ωα, Unsigned.(2), false)
+  vIb0 = parallel(Fz, ω, KPara, h, Ωα, Unsigned(0), false)
+  vIb1 = parallel(Fz, ω, KPara, h, Ωα, Unsigned(1), false)
+  vIb2 = parallel(Fz, ω, KPara, h, Ωα, Unsigned(2), false)
   @test isfinite(vIb0)
   @test isfinite(vIb1)
   @test isfinite(vIb2)

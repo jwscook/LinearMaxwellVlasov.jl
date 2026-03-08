@@ -50,8 +50,8 @@ function FPerpendicularNumerical(vth::T, vd::T=0.0) where {T<:Number}
   smp = ShiftedMaxwellianPerpendicular(vth, vd)
   F = v -> smp(v, false)
   dFdv = v -> smp(v, true)
-  lower = max(vd - default_integral_range * vth, zero(vd - vth))
-  upper = vd + default_integral_range * vth
+  lower = max(vd - DEFAULT_INTEGRAL_RANGE * vth, zero(vd - vth))
+  upper = vd + DEFAULT_INTEGRAL_RANGE * vth
   return FPerpendicularNumerical(F, dFdv, lower, upper)
 end
 function FPerpendicularNumerical(f::T, lower::Float64, upper::Float64
@@ -62,7 +62,7 @@ function FPerpendicularNumerical(f::T, lower::Float64, upper::Float64
   n == 1 && return FPerpendicularNumerical(f, derivative(f), lower, upper)
   invn = 1 / n
   fn(v) = f(v) * invn
-  gn = derivative(fn)
+  gn(v) = derivative(fn, v)
   return FPerpendicularNumerical(fn, gn, lower, upper)
 end
 

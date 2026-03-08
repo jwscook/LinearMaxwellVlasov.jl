@@ -4,6 +4,7 @@ println("$(now()) $(@__FILE__)")
 using LinearMaxwellVlasov
 using Test, SpecialFunctions, QuadGK, HCubature, StaticArrays, Random
 using DualNumbers, ForwardDiff
+using PlasmaDispersionFunctions
 
 const LMV = LinearMaxwellVlasov
 
@@ -11,16 +12,6 @@ const LMV = LinearMaxwellVlasov
   Random.seed!(0)
 
   verbose = false
-
-  tolerance = Tolerance()
-  @testset "Plasma dispersion function" begin
-    @test LMV.plasma_dispersion_function(0.0, 0) ≈ im*sqrt(pi) rtol=0.001
-    @test LMV.plasma_dispersion_function(im, 0) ≈ im*0.757872156141312 rtol=0.001
-    @test LMV.plasma_dispersion_function(ComplexF64(-1.52, 0.47), 0) ≈ ComplexF64(0.6088888957234254, 0.33494583882874024) rtol=0.001
-    Z0 = LMV.plasma_dispersion_function(0.0, 0)
-    Z1 = LMV.plasma_dispersion_function(0.0, 1)
-    @test Z1 == LMV.plasma_dispersion_function(0.0, 1, Z0)
-  end
 
   @testset "BesselJ generation function: used in derivation" begin
     for i ∈ 1:10, s ∈ (-1, 1)
@@ -65,28 +56,6 @@ const LMV = LinearMaxwellVlasov
     end
   end
 
-  @testset "slow fourier transform" begin
-    for n ∈ -5:5
-      c = rand()
-      f(x) = c * sin(n * x)
-      fn = LMV.discretefouriertransform(f, n)
-      @test c * im * (n != 0) ≈ fn atol=sqrt(eps()) rtol=sqrt(eps())
-      g(x) = c * cos(n * x)
-      gn = LMV.discretefouriertransform(g, n)
-      @test c ≈ gn atol=sqrt(eps()) rtol=sqrt(eps())
-    end
-  end
-
-  @testset "fold numerator about pole" begin
-    vth = rand()*100
-    bnd = 12*vth
-    z = 3 * rand() * vth
-    numerator(x) = exp.(-x.^2/2/vth^2) / sqrt(2 * π) / vth
-    f(x) = numerator(x) ./ (x - z)
-    g = LMV.foldnumeratoraboutpole(numerator, z)
-    expected = QuadGK.quadgk(g, 2eps(), 12*vth)[1]
-  end
-
   @testset "transform to polar" begin
     f(x) = exp(-sum(x.^2)) / π
     p = LMV.transformtopolar(f)
@@ -123,23 +92,14 @@ const LMV = LinearMaxwellVlasov
     @test all(LMV.coordinates(g, [(sqrt(5)-1)/2, π/7]) .≈ [pth, π/7])
   end
 
-  @testset "Ensure besselj composes with complex indices and Duals" begin
-    @test DualNumbers.dualpart(besselj(1.0 + im, Dual(1.0, 1))) ≈
-      (besselj(0+im, 1.0) - besselj(2.0+im, 1.0)) / 2
-  end
-
   @testset "Duals vs ForwardDiff" begin
     for n in (3, 4, -3, -4), x in (-5.0, 5.0)
       @test DualNumbers.dualpart(besselix(n, Dual(x, 1))) ≈
         ForwardDiff.derivative(z->besselix(n, z), x)
-      @test DualNumbers.dualpart(besselj(n, Dual(x, 1))) ≈
-        ForwardDiff.derivative(z->besselj(n, z), x)
     end
     for n in (3, 4), x in (-5.0, 5.0)
       @assert ForwardDiff.derivative(z->besseli(n, z), x) ≈
         (besseli(n-1, x) + besseli(n+1, x)) / 2
-      @test DualNumbers.dualpart(n^Dual(x, 1)) ≈
-        ForwardDiff.derivative(z->n^z, x)
     end
   end
 

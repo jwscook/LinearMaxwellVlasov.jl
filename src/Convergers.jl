@@ -47,6 +47,7 @@ until the convergence criterion is met based on the tolerance
 ...
 # Arguments
 - `f::T`: input function or functor
+- `minharmonics::Int=1`: minimum number of harmonics to sum over
 - `tol::Tolerance=Tolerance`: Tolerance object containing relative and absolute tolerances
 ...
 
@@ -54,13 +55,14 @@ until the convergence criterion is met based on the tolerance
 ```julia
 ```
 """
-@inline function converge(f::T, tol::Tolerance=Tolerance()) where {T}
+@inline function converge(f::T, minharmonics::Int=DEFAULT_MIN_HARMONICS, tol::Tolerance=Tolerance()) where {T}
   l = u = n₀ = 0
   value = f(n₀) # f(::Int) is summed outwards from 0 to ± Inf until convergence
   delta = f(l -= 1) + f(u += 1)
-  while !fastisapprox(value, value + delta, rtol=tol.rel, atol=tol.abs, nans=true)
+  while u < minharmonics || !fastisapprox(value, value + delta, rtol=tol.rel, atol=tol.abs, nans=true)
     value += delta
     delta = f(l -= 1) + f(u += 1)
   end
   return value + delta
 end
+@inline converge(f::T, tol::Tolerance) where {T} = converge(f, DEFAULT_MIN_HARMONICS, tol)

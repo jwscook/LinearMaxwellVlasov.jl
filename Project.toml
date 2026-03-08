@@ -1,24 +1,32 @@
 name = "LinearMaxwellVlasov"
 uuid = "b1137d70-0135-468f-bb3e-ace6f597c457"
 authors = ["James Cook <cookjws@gmail.com>"]
-version = "0.1.13"
+version = "0.2.0"
 
 [deps]
 CommonSubexpressions = "bbf7d656-a473-5ed7-a52c-81e309532950"
 DualNumbers = "fa6b7ba4-c1ee-5f82-b5fc-ecf0adba8f74"
+GeneralBesselj = "17299ed4-4610-4832-92bf-f635a0f115d6"
 HCubature = "19dc6840-f33b-545b-b366-655c7e3ffd49"
 HypergeometricFunctions = "34004b35-14d8-5ef3-9330-4cdb6864b03a"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 MuladdMacro = "46d2c3a1-f734-5fdb-9937-b9b9aeba4221"
+PlasmaDispersionFunctions = "9207f8dc-3231-463e-84ff-2de753abf806"
 QuadGK = "1fd47b50-473d-5c70-9696-f719f8f3bcdc"
 SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
+[sources]
+GeneralBesselj = {rev = "main", url = "https://github.com/jwscook/GeneralBesselj.jl"}
+PlasmaDispersionFunctions = {rev = "main", url = "https://github.com/jwscook/PlasmaDispersionFunctions.jl"}
+
 [compat]
 CommonSubexpressions = "≥ 0.3"
 DualNumbers = "≥ 0.6.5"
+GeneralBesselj = "≥ 0.1.0"
 HCubature = "≥ 1.5.1"
 Memoize = "≥ 0.4.4"
+PlasmaDispersionFunctions = "≥ 0.1.0"
 QuadGK = "≥ 2.4.1"
 SpecialFunctions = "≥ 1.5.1"
 StaticArrays = "≥ 1.2.7"
@@ -32,6 +40,14 @@ Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 UnitTestDesign = "239896fa-e45a-40e8-9993-3c434b0bc450"
+
+[source.GeneralBesselj]
+rev = "main"
+url = "https://github.com/jwscook/GeneralBessel.jl"
+
+[source.PlasmaDispersionFunctions]
+rev = "main"
+url = "https://github.com/jwscook/PlasmaDispersionFunctions.jl"
 
 [targets]
 test = ["Dates", "ForwardDiff", "InteractiveUtils", "Memoize", "Random", "Statistics", "Test", "UnitTestDesign"]
