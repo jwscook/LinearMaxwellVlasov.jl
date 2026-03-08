@@ -200,10 +200,9 @@ function relativisticmomentum(S::CoupledRelativisticSpecies, C::Configuration)
 
   cubaatol = C.options.cubature_tol.abs
   cubartol = C.options.cubature_tol.rel
-  deformation = S.m * imagcontourdeformation(ω / kz, real(kz) >= 0 ? 1 : -1,
-                                             C.options.cauchydeformationangle)
-
   pchar = norm(S.F.normalisation)
+  deformation = imagcontourdeformation(ω / kz, real(kz) >= 0 ? 1 : -1,
+    pchar * 1000 / S.m, C.options.cauchydeformationangle) * S.m
 
   function integral2D()
     integrand.count[] = 0
@@ -212,7 +211,7 @@ function relativisticmomentum(S::CoupledRelativisticSpecies, C::Configuration)
     #    x->integrand((x[1] + im * deformation, x[2])), pchar/100),
     #  (0, -π/2), (1, π/2), initdiv=2,
     #  rtol=cubartol, atol=cubaatol, maxevals=C.options.cubature_maxevals)
-    output, errorestimate = HCubature.hcubature(x->integrand((x[1] + im * deformation, x[2])),
+    t1 = @elapsed output, errorestimate = HCubature.hcubature(x->integrand((x[1] + im * deformation, x[2])),
       (-20pchar, 0), (20pchar, 20pchar), initdiv=16,
       rtol=cubartol, atol=cubaatol, maxevals=C.options.cubature_maxevals)
     #output, errorestimate = HCubature.hcubature(x->integrand((pchar * x[1] + im * deformation, pchar * x[2])),
@@ -220,8 +219,10 @@ function relativisticmomentum(S::CoupledRelativisticSpecies, C::Configuration)
     #  rtol=cubartol, atol=cubaatol, maxevals=C.options.cubature_maxevals)
     #output /= pchar
     if C.options.erroruponcubaturenonconvergence
+      msg = "error / val = $(errorestimate / norm(output))"
+      msg *= ", count = $(integrand.count[]), time=$t1 seconds"
       @assert (integrand.count[] < C.options.cubature_maxevals) ||
-        errorestimate < max(cubartol * norm(output), cubaatol)
+        errorestimate < max(cubartol * norm(output), cubaatol) msg
     end
     return output
   end

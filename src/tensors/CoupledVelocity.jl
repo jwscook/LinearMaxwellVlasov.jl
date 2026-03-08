@@ -93,8 +93,10 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
   cubartol = C.options.cubature_tol.rel
   nc = NewbergerClassical(S, ω, C.wavenumber)
 
+  vchar = sqrt(S.F.lower^2 + S.F.upper^2)
+
   deformation = imagcontourdeformation(ω / kz,
-                                       real(kz) >= 0 ? 1 : -1,
+                                       real(kz) >= 0 ? 1 : -1, vchar,
                                        C.options.cauchydeformationangle)
 
   function robustintegral2D()

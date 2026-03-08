@@ -99,7 +99,7 @@ end
   end
 end
 @testset "isreal isfinite" begin
-  for r in (1.0, Inf), s in (-1, 0, 1)
+  for r in (1.0, Inf), s in (-1, 1)
     @test !isreal(LMV.Pole(r + 1im, s))
     @test isreal(LMV.Pole(r + 0im, s))
   end
@@ -134,7 +134,7 @@ end
   end
 end
 @testset "imagcontourdeformation" begin
- @assert LMV.imagcontourdeformation(Inf + NaN*im, 1) <= 0
+ @assert LMV.imagcontourdeformation(Inf + NaN*im, 1, 1.0) <= 0
 end
 @testset "integral contour deformation" begin
   numerator(x) = exp(-x*x) / sqrt(π)
@@ -144,7 +144,7 @@ end
 
     expected = plasma_dispersion_function(z)
 
-    d = LMV.imagcontourdeformation(z, r >= 0 ? 1 : -1)
+    d = LMV.imagcontourdeformation(z, r >= 0 ? 1 : -1, 1.0)
     deformedpole = LMV.Pole(z, 1, d)
     result = QuadGK.quadgk(x->foobles(x, z), -12 + im * d, 12 + im * d)[1] + LMV.residue(numerator, deformedpole)
 

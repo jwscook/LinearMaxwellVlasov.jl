@@ -3,12 +3,14 @@ struct Pole{T<:Number, U<:Real} <: Number
   causalsign::Int
   deformation::U
 end
-function Pole(pole::Number, causalsign::Int, cauchydeformationangle=DEFAULT_CAUCHY_DEFORMATION_ANGLE)
-  return Pole(pole, causalsign, imagcontourdeformation(pole, causalsign, θ=cauchydeformationangle))
+function Pole(pole::Number, causalsign::Int)
+  return Pole(pole, causalsign, imagcontourdeformation(pole, causalsign, abs(pole),
+                                                       DEFAULT_CAUCHY_DEFORMATION_ANGLE))
 end
 
 function Pole(ω::Number, kz::Number, n::Integer, Ω::Number,
-    causalsign::Int, deformation=imagcontourdeformation((ω / Ω - n) * Ω / kz, causalsign))
+    causalsign::Int, deformation)# =imagcontourdeformation((ω / Ω - n) * Ω / kz,
+                                 #                     causalsign, abs((ω / Ω - n) * Ω / kz)))
   @assert real(ω) >= 0
   return Pole((ω / Ω - n) * Ω / kz, causalsign, deformation)
 end
@@ -66,18 +68,23 @@ function residuesigma(pole::Number, causalsign::Real)
 end
 residuesigma(pole::Pole) = residuesigma(pole.pole - im * pole.deformation, pole.causalsign)
 
-function imagcontourdeformation(pole, causalsign, θ=DEFAULT_CAUCHY_DEFORMATION_ANGLE)
-  r, i = reim(pole)
+function imagcontourdeformation(pole, causalsign, vchar::Real, θ=DEFAULT_CAUCHY_DEFORMATION_ANGLE)
+  @assert vchar > 0
+  @assert abs2(causalsign) == 1
+  riparts(x::Real) = (x, isfinite(x) ? zero(x) : typeof(x)(NaN))
+  riparts(x::Complex) = reim(x)
+  r, i = riparts(pole)
+  T = promote_type(real(typeof(pole)), typeof(vchar), typeof(θ))
   deformation = if (!iszero(i) && abs(angle(pole)) >= θ)
-    zero(r)
-  elseif iszero(pole)
-    -one(r)
+    zero(T)
+  elseif iszero(pole) || !isfinite(i)
+    -T(tan(θ) * vchar)
   elseif isfinite(r) && isfinite(i)
-    -(tan(θ) * abs(r) + i)
+    -T(tan(θ) * abs(r) + i)
   elseif !isfinite(r) && isfinite(i)
-    -(tan(θ) + abs(i))
+    -T(tan(θ) + abs(i))
   else
-    -one(r)
+    throw(ErrorException("Shouldnt be able to get here"))
   end
   @assert deformation <= 0 "pole, θ, deformation = $pole, $θ, $deformation"
   @assert !iszero(i + deformation) "pole, θ, deformation = $pole, $θ, $deformation"
