@@ -1,11 +1,5 @@
 using QuadGK, SpecialFunctions, LinearAlgebra
 
-const default_integral_range = 8.0
-const quadorder = 32
-const quadorder_para = quadorder
-const quadorder_perp = quadorder
-const quadrature = QuadGK.quadgk
-
 abstract type AbstractDistributionFunction end
 abstract type AbstractFParallel <: AbstractDistributionFunction end
 abstract type AbstractFPerpendicular <: AbstractDistributionFunction end
@@ -32,7 +26,8 @@ end
 Tool to normalize a function f between two integral limits a and b
 """
 function normalise(f::T, a::Float64, b::Float64) where {T<:Function}
-  n, _ = quadrature(f, a, b, rtol=eps(), atol=0, order=quadorder, norm=quadnorm)
+  n, _ = QuadGK.quadgk(f, a, b, rtol=eps(), atol=0, order=DEFAULT_QUADORDER,
+                       norm=quadnorm)
   @assert n > 0 "n = $n"
   n == one(n) && return f, one(n)
   invn = 1 / n
@@ -58,16 +53,21 @@ Integration of Abstract Arbitrary FParallel
 function integrate(f::AbstractFParallelNumerical, ∂F∂v::Bool=false,
     tol::Tolerance=Tolerance())
   integrand = f(∂F∂v) # TODO
-  return quadrature(integrand, f.lower, f.upper, rtol=tol.rel,
-    atol=tol.abs, order=quadorder_para, norm=quadnorm)[1]
+  return QuadGK.quadgk(integrand, f.lower, f.upper, rtol=tol.rel,
+    atol=tol.abs, order=DEFAULT_QUADORDER_PARA, norm=quadnorm)[1]
 end
 function integrate(f::AbstractFParallelNumerical, numerator_kernel::T,
     ∂F∂v::Bool, tol::Tolerance=Tolerance()) where {T<:Function}
   # No pole on this integral, therefore no residue
   fv = f(∂F∂v) # TODO
   integrand(v) = fv(v) * numerator_kernel(v)
-  return first(quadrature(integrand, f.lower, f.upper,
-    rtol=tol.rel, atol=tol.abs, order=quadorder_para, norm=quadnorm))
+  if f.upper == -f.lower
+    return first(QuadGK.quadgk(v->integrand(v) + integrand(-v), 0.0, f.upper,
+      rtol=tol.rel, atol=tol.abs, order=DEFAULT_QUADORDER_PARA, norm=quadnorm))
+  else
+    return first(QuadGK.quadgk(integrand, f.lower, f.upper,
+      rtol=tol.rel, atol=tol.abs, order=DEFAULT_QUADORDER_PARA, norm=quadnorm))
+  end
 end
 
 """
@@ -79,47 +79,17 @@ otherwise positive slopes at negative velocities give rise to instability and
 not damping.
 """
 function integrate(f::AbstractFParallelNumerical, numerator_kernel::T,
-    pole::Pole, ∂F∂v::Bool,
-    tol::Tolerance=Tolerance()) where {T<:Function}
+    pole::Pole, ∂F∂v::Bool, tol::Tolerance=Tolerance()) where {T<:Function}
   fv = f(∂F∂v) # TODO
-  numerator(v) = fv(v) * numerator_kernel(v) # / (v - pole) is implied
-  integrand = foldnumeratoraboutpole(numerator, pole)
+  numerator(v) = fv(v) * numerator_kernel(v)
+  integrand(v) = numerator(v) / (v - pole)
 
-  Δ_2 = (f.upper - f.lower) / 2
+  limits = [f.lower, f.upper] .+ im * pole.deformation
+  Δ = (f.upper - f.lower)
+  output = QuadGK.quadgk(integrand, limits[1] - Δ, limits[2] + Δ,
+    rtol=tol.rel, atol=tol.abs, order=DEFAULT_QUADORDER_PARA, norm=quadnorm)[1]
 
-  limits = [f.lower, f.upper]
-  overlap = (real(pole) - Δ_2  < f.upper) && (real(pole) + Δ_2 > f.lower)
-  if overlap
-    limits[1] = min(limits[1], real(pole) - Δ_2)
-    limits[2] = max(limits[2], real(pole) + Δ_2)
-  end
-
-  limits = unique(sort(limitsfolder(limits, real(pole))))
-  @assert 2 <= length(limits) <= 3
-  principal = first(quadrature(integrand, limits[1], limits[2],
-    rtol=tol.rel, atol=tol.abs, order=quadorder_para, norm=quadnorm))
-
-  if length(limits) == 3 # can't use limits... due to weird type instability
-    principal += first(quadrature(integrand, limits[2], limits[3],
-      rtol=tol.rel, atol=tol.abs, order=quadorder_para, norm=quadnorm))
-  end
-  # run out of digits? real(pole) ± Δ_2 == real(pole)
-  if !overlap
-    limits = limitsfolder(real(pole) .+ [- Δ_2, Δ_2], real(pole))
-    limits = unique(sort(limits))
-    @assert 2 <= length(limits) <= 3
-    principal += first(quadrature(integrand, limits[1], limits[2],
-      rtol=tol.rel, atol=tol.abs, order=quadorder_para, norm=quadnorm))
-    if length(limits) == 3
-      principal += first(quadrature(integrand, limits[2], limits[3],
-        rtol=tol.rel, atol=tol.abs, order=quadorder_para, norm=quadnorm))
-    end
-  end
-  polefix = wavedirectionalityhandler(pole)
-  residueatpole = polefix(residue(numerator, polefix(pole)))
-
-  output = Complex(principal) + residueatpole
-  return output
+  return output + residue(numerator, pole)
 end
 
 """
@@ -146,8 +116,8 @@ function integrate(f::AbstractFPerpendicular, kernel::T,
     ) where {T<:Function}
   fv = f(∂F∂v) # TODO
   f_integrand(v) = fv(v) .* kernel(v)
-  return first(quadrature(f_integrand, lower(f), upper(f),
-    rtol=tol.rel, atol=tol.abs, order=quadorder_perp, norm=quadnorm))
+  return first(QuadGK.quadgk(f_integrand, lower(f), upper(f),
+    rtol=tol.rel, atol=tol.abs, order=DEFAULT_QUADORDER_PERP, norm=quadnorm))
 end
 function integrate(f::AbstractFPerpendicularNumerical, ∂F∂v::Bool=false,
     tol::Tolerance=Tolerance())

@@ -1,4 +1,31 @@
-using CommonSubexpressions, MuladdMacro
+using CommonSubexpressions, MuladdMacro, PlasmaDispersionFunctions
+
+function parallel(S::AbstractKineticSpecies, C::Configuration, n::Int)
+  return paralleltuple((power, ∂F∂v)->parallel(S, C, n, power, ∂F∂v))
+end
+
+
+const PARALLEL_TUPLE_ORDER = ((UInt64(0), false),
+                              (UInt64(1), false),
+                              (UInt64(2), false),
+                              (UInt64(0), true),
+                              (UInt64(1), true)) # Don't change this order
+
+paralleltuple(f::F) where {F} = (f(PARALLEL_TUPLE_ORDER[1]...),
+                                 f(PARALLEL_TUPLE_ORDER[2]...),
+                                 f(PARALLEL_TUPLE_ORDER[3]...),
+                                 f(PARALLEL_TUPLE_ORDER[4]...),
+                                 f(PARALLEL_TUPLE_ORDER[5]...))
+
+"""
+Interface
+The parallel integral of the distribution function and the relevant kernel
+"""
+function parallel(S::AbstractKineticSpecies, C::Configuration, n::Integer,
+    power::Unsigned, ∂F∂v::Bool)
+  return parallel(S.Fz, C.frequency, C.wavenumber, n * S.Ω, power, ∂F∂v,
+    C.options.quadrature_tol, C.options.cauchydeformationangle)
+end
 
 struct ParallelKernelNumerator <: Function
   power::UInt64
@@ -10,16 +37,16 @@ Compile the kernels of the parallel integral and fetch it from the
 DistributionFunctions module. If k parallel is zero then there is no
 Landau damping, so this case is made separate, as is easier to deal with.
 """
-function parallel(Fz::AbstractFParallelNumerical, ω::T,
-    kz::U, n::Integer, Ω::Real, power::Unsigned, ∂F∂v::Bool,
-    tol::Tolerance=Tolerance()) where {T<:Number, U<:Number}
-  nΩ = n * Ω
-  pole = Pole((ω - nΩ) / kz, kz)
-  V = complex(promote_type(typeof(nΩ - ω), typeof(kz))) # to get type stability
+function parallel(Fz::AbstractFParallelNumerical, ω::Number, k::Wavenumber,
+    nΩ::Real, power::Unsigned, ∂F∂v::Bool, tol::Tolerance=Tolerance(),
+    cauchydeformationangle::Real=DEFAULT_CAUCHY_DEFORMATION_ANGLE)
+  kz = parallel(k)
+  V = complex(promote_type(typeof.((ω, kz, nΩ))...)) # to get type stability
   pkn = ParallelKernelNumerator(power)
   return if iszero(kz)
     integrate(Fz, pkn, ∂F∂v, tol) / V(nΩ - ω)
   else
+    pole = Pole((ω - nΩ) / kz, k.causalsign, cauchydeformationangle)
     integrate(Fz, pkn, pole, ∂F∂v, tol) / V(kz)
   end
 end
@@ -31,10 +58,6 @@ struct MaxwellianIntegralsParallel{T, U, V}
   vth⁻²2::T
 end
 
-function MaxwellianIntegralsParallel(Fz::FBeam, ω, kz, nΩ)
-  return MaxwellianIntegralsParallel(Fz.vth, Fz.vd, ω, kz, nΩ)
-end
-
 """
 The parallel integral of the Beam only requires an integral
 over a drifting Maxwellian subject to the relevant kernels. All this is
@@ -42,6 +65,7 @@ calculated here.
 """
 function MaxwellianIntegralsParallel(vth, vd, ω, kz, nΩ)
   T = promote_type(typeof.((vth, vd, ω, kz, nΩ))...)
+  causalconj(z) = real(kz) >= 0 ? z : conj(z)
   if iszero(kz) # no need to do anything difficult!
     ∫⁰ = T(1 / (ω - nΩ))
     ∫¹ = T(vd / (ω - nΩ))
@@ -49,18 +73,18 @@ function MaxwellianIntegralsParallel(vth, vd, ω, kz, nΩ)
   else
     σ⁻¹ = 1 / (kz * vth)
     @muladd z = (ω - kz * vd - nΩ) * σ⁻¹
-    z̄ = wavedirectionalityhandler(z, kz)
-    Z0 = plasma_dispersion_function(z̄, UInt64(0))
-    Z1 = plasma_dispersion_function(z̄, UInt64(1), Z0)
-    Z2 = plasma_dispersion_function(z̄, UInt64(2), Z1)
+    z = causalconj(z)
+    Z0 = plasma_dispersion_function(z, UInt64(0))
+    Z1 = plasma_dispersion_function(z, UInt64(1), Z0)
+    Z2 = plasma_dispersion_function(z, UInt64(2), Z1)
     @cse @muladd begin
       a = Z0
       b = Z0 * vd + Z1 * vth
       c = Z0 * vd^2 + Z1 * 2vth * vd + Z2 * vth^2
     end
-    ∫⁰ = - wavedirectionalityhandler(a, kz) * σ⁻¹
-    ∫¹ = - wavedirectionalityhandler(b, kz) * σ⁻¹
-    ∫² = - wavedirectionalityhandler(c, kz) * σ⁻¹
+    ∫⁰ = - causalconj(a) * σ⁻¹
+    ∫¹ = - causalconj(b) * σ⁻¹
+    ∫² = - causalconj(c) * σ⁻¹
   end
   return MaxwellianIntegralsParallel(vth, vd, (∫⁰, ∫¹, ∫²), 2 / vth^2)
 end
@@ -76,41 +100,14 @@ function (mib::MaxwellianIntegralsParallel)(power::Unsigned, ∂F∂v::Bool)
   return output
 end
 
-"""
-Parallel integrals for the Beam - used for testing purposes
-"""
-function parallel(Fz::FBeam, ω::T, kz::U, n::Integer,
-    Ω::Real, power::Unsigned, ∂F∂v::Bool, _::Tolerance=Tolerance()
-    ) where {T<:Number, U<:Number}
-  return MaxwellianIntegralsParallel(Fz, ω, kz, n * Ω)(power, ∂F∂v)
-end
-
-"""
-Interface
-The parallel integral of the distribution function and the relevant kernel
-"""
-function parallel(S::AbstractKineticSpecies, C::Configuration, n::Integer,
-    power::Unsigned, ∂F∂v::Bool)
-  return parallel(S.Fz, C.frequency, para(C.wavenumber), n, S.Ω, power, ∂F∂v,
-    C.options.quadrature_tol)
-end
-
 function parallel(S::T, C::Configuration, n::Int
     ) where {T⊥, Tz<:FBeam, T<:AbstractSeparableVelocitySpecies{Tz, T⊥}}
-  ω = C.frequency
-  kz = para(C.wavenumber)
-  mib = MaxwellianIntegralsParallel(S.Fz.vth, S.Fz.vd, ω, kz, n * S.Ω)
+  return parallel(S.Fz, C.frequency, C.wavenumber, n * S.Ω)
+end
+function parallel(Fz::FBeam, ω, k::Wavenumber, nΩ)
+  kz = parallel(k)
+  mib = MaxwellianIntegralsParallel(Fz.vth, Fz.vd, ω, kz, nΩ)
   return paralleltuple(mib)
-end
-function parallel(S::AbstractKineticSpecies, C::Configuration, n::Int)
-  return paralleltuple((power, ∂F∂v)->parallel(S, C, n, power, ∂F∂v))
-end
-function paralleltuple(f::F) where {F}
-    return (f(UInt64(0), false),
-            f(UInt64(1), false),
-            f(UInt64(2), false),
-            f(UInt64(0), true),
-            f(UInt64(1), true)) # Don't change this order
 end
 
 """

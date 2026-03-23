@@ -24,7 +24,7 @@ function Configuration(args...)
   wavenumber = filter(x->typeof(x) <: Wavenumber, args)
   options = filter(x->typeof(x) <: Options, args)
   ω = isempty(frequency) ? ComplexF64(0) : first(frequency)
-  k = isempty(wavenumber) ? Wavenumber() : first(wavenumber)
+  k = isempty(wavenumber) ? Wavenumber(0.0, 0.0) : first(wavenumber)
   o = isempty(options) ? Options() : first(options)
   return Configuration(ω, k, o)
 end

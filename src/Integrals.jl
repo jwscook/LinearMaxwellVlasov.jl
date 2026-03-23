@@ -91,8 +91,6 @@ Memoise the inputs to the integrals; export the memoised function, and
 the dictionary of inputs -> outputs.
 This uses a parallel cache which holds the logic for the integrals and
 ensure that the values are only calculated once.
-It only matters what n-m is, not the values of n and m individually
-So change (n, m)->(n-m, 0) to do fewer calculations
 
 ...
 # Arguments

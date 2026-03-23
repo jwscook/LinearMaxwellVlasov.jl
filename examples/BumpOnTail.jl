@@ -2,26 +2,27 @@ using Dates
 
 println("Starting BumpOnTail at ", now())
 using LinearMaxwellVlasov
-using Random, Profile, StatProfilerHTML
-using Optim, Plots, LinearAlgebra, NelderMead
-using BenchmarkTools, InteractiveUtils
+using Random, Plots, LinearAlgebra, WindingNelderMead, NelderMead
 Plots.gr()
 Random.seed!(0)
+using ThreadSafeDicts
 
-function run()
+const LMV = LinearMaxwellVlasov
+
+function run(DIRECTION)
   mₑ = LinearMaxwellVlasov.mₑ
   mi = 1836*mₑ
   n0 = 1.0e19
   Πe = plasmafrequency(n0, mₑ, -1)
-  Ωe = 1.0e-8 * Πe
+  Ωe = Πe #/ 100
   ϵV = 1.0e2
   vthe = thermalspeed(ϵV, mₑ)
-  vd = -6.0 * vthe
+  vd = 6.0 * vthe * DIRECTION
   λD = vthe / Πe
   kD = 2π/λD
   ratio = 1.0e-3
 
-  fu(v)  = exp.(-v.^2/vthe^2) + ratio * exp.(-(v-vd).^2/vthe^2)
+  fu(v) = exp.(-v.^2/vthe^2) + ratio * exp.(-(v-vd).^2/vthe^2)
   f_parallel = FParallelNumerical(fu, -10*vthe + vd, vd + 10*vthe)
 
   electron_and_beam = SeparableVelocitySpecies(Πe, Ωe, f_parallel,
@@ -36,39 +37,47 @@ function run()
   beam_rb = RingBeamSpecies(Πe*sqrt(ratio), Ωe, vthe, vthe, vd)
   Srb = Plasma([electron_rb, beam_rb])
 
+  fring = LMV.FRing(vthe)
+  coupled(vz, v⊥) = f_parallel(vz) * fring(v⊥)
+  fcoupled = FCoupledVelocityNumerical(coupled, (vd, vthe); autonormalise=true)
+  electron_cp = CoupledVelocitySpecies(Πe, Ωe, fcoupled)
+  Scp = Plasma([electron_cp])
+
   plot_it = false
   if plot_it
     v = Vector(range(-12.0*vthe, stop=12.0*vthe, length=10000))
     Plots.plot(v/(Πe/kD), electron_and_beam.Fb.F(v)/vthe, linestyle=:cyan)
     Plots.plot!(v/(Πe/kD), electron_and_beam.Fb.dFdv(v), linestyle=:black)
   end
-  function f!(C::Configuration, x::Vector{T}, S) where {T<:Number}
+  function f!(C::Configuration, x::Union{Tuple, AbstractVector}, S)
     C.frequency = ComplexF64(x[1], x[2])
-    return abs(tensor(S, C)[3, 3])
+    return tensor(S, C)[3, 3]
   end
 
-  N = 64
-  ks = Vector{Float64}(range(1.0e-3, stop=1.0, length=N)) .* 0.08
+  N = 32
+  ks = (collect(1/2N:1/N:1-1/2N) .* 0.9 .+ 0.1) .* 0.08
   ks = sort(vcat(-ks, ks))
-  O = Options()
-  F = (1.05 + im * 0.1)*Πe
-  K = Wavenumber()
-  C = Configuration(F, K, O)
+  freq = (1.05 + im * 0.04)*Πe
 
   function solve(args)
-    solutions = Vector()
-    @show N, args[end]
-    for i ∈ eachindex(ks)
-      objective, config, lb, ub = args
-      c = deepcopy(config)
-      c.wavenumber = Wavenumber(wavenumber=ks[i] * kD,
-        propagationangle=1.0e-8*π)
-      neldermeadsol = NelderMead.optimise(x->norm(objective(c, x)),
-        (ub .+ lb) / 2, (ub .- lb) ./ 1000; stopval=1.0e-4, timelimit=10)
-      val, minimizer, returncode, numiterations = neldermeadsol
-      if returncode == :STOPVAL_REACHED
-        objective(c, minimizer)
-        push!(solutions, c)
+    solutions = ThreadSafeDict()
+    Base.Threads.@threads :dynamic for i ∈ eachindex(ks)
+      #@show ks[i]
+      objective, lb, ub, opts = args
+      wavenumber = Wavenumber(wavenumber=ks[i] * kD, propagationangle=1e-4)
+      c = Configuration(freq, wavenumber, opts)
+      try
+        t1 = @elapsed neldermeadsol = NelderMead.optimise(x->norm(objective(c, x)),
+          (ub .+ lb) / 2, (ub .- lb) ./ 1000; stopval=1.0e-3, timelimit=1200, ftol_rel=10eps(),
+          maxiters=200)
+        minimizer, val, returncode, numiterations = neldermeadsol
+        if returncode == :STOPVAL_REACHED
+          solutions[ks[i]] = c
+        end
+        @show returncode, numiterations, val, t1
+      catch err
+        @warn err
+        rethrow(err)
       end
     end
     return solutions
@@ -76,15 +85,23 @@ function run()
   f!max(C, x) = f!(C, x, Smax)
   f!rb(C, x) = f!(C, x, Srb)
   f!num(C, x) = f!(C, x, Snum)
+  f!cp(C, x) = f!(C, x, Scp)
   args = Vector{Any}()
-  push!(args, (f!max, C, [0.9, -0.1]*Πe, [1.5, 0.2]*Πe))
-  push!(args, (f!rb, C, [0.9, -0.1]*Πe, [1.5, 0.2]*Πe))
-  push!(args, (f!num, C, [0.9, -0.1]*Πe, [1.5, 0.2]*Πe))
 
-  @time for (arg, title) in zip(args, ("Maxwellian", "Ring-Beam", "Quadrature"))
+  otheropts = Options()
+  coupledopts = Options(cuba_rtol=1e-4, cuba_evals=1_000_000, error_cuba=false, quad_rtol=1e-4, sum_rtol=1e-4)
+  push!(args, ((f!cp, [0.9, -0.11]*Πe, [1.5, 0.1]*Πe, coupledopts), "Coupled"))
+  push!(args, ((f!max, [0.9, -0.11]*Πe, [1.5, 0.1]*Πe, otheropts), "Maxwellian"))
+  push!(args, ((f!rb, [0.9, -0.11]*Πe, [1.5, 0.1]*Πe, otheropts), "Ring-Beam"))
+  push!(args, ((f!num, [0.9, -0.11]*Πe, [1.5, 0.1]*Πe, otheropts), "Quadrature"))
+
+  @time for (arg, title) in args
     @time solutions = solve(arg)
-    ω = [solution.frequency for solution in solutions]
-    Ks = [para(solution.wavenumber) for solution in solutions]
+    ω = [solution.frequency for solution in values(solutions)]
+    Ks = [para(solution.wavenumber) for solution in values(solutions)]
+    inds = sortperm(Ks)
+    ω = ω[inds]
+    Ks = Ks[inds]
 
     ωanalytical = sqrt.(Πe^2 .+ 3*(Ks*vthe).^2)
     dFdv = f_parallel.(ωanalytical ./ Ks, true)
@@ -95,14 +112,15 @@ function run()
                   xlabel="\$Wavenumber [2\\pi / \\lambda_D]\$",
                   ylabel="\$Frequency [\\Omega_{pe}]\$")
     Plots.plot!(Ks / kD, γanalytical ./ Πe,
-               markercolor=:blue, markershape=:square)
+                markercolor=:blue, markershape=:square)
     Plots.scatter!(Ks / kD, real.(ω) ./ Πe,
                   markercolor=:green, markershape=:circle)
     Plots.scatter!(Ks / kD, imag.(ω) ./ Πe,
                   markercolor=:green, markershape=:square)
     Plots.plot!(legend=false)
-    Plots.savefig("$title.pdf")
+    Plots.savefig("$(title)_$(DIRECTION).pdf")
   end
 end
-run()
+run(-1)
+run(1)
 println("Ending at ", now())

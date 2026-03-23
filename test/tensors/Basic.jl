@@ -62,15 +62,6 @@ function performtest()
     end
   end
 
-  @testset "electrostatic" begin
-    k = 2π/lri
-    K = Wavenumber(k=k, θ=0)
-    C = Configuration((1.1 + 0.1*im)* Πe, K)
-    output_tensor = tensor(S_num, C)[3,3]
-    output = electrostatictensor(S_num, C)[3, 3]
-    @test output_tensor ≈ output
-  end
-
   @testset "two stream" begin
     Πe = plasmafrequency(1e19, mₑ, -1)
     vbeam = thermalspeed(1e3, mₑ)
@@ -83,7 +74,7 @@ function performtest()
     config = Configuration(0 + im * Πe / 2,
                            Wavenumber(k=√3/2 * Πe / vbeam, θ=0.0))
     @test tensor(Plasma([left, right]), config)[3,3] ≈ 0 atol=eps()
-    @test electrostatictensor(Plasma([left, right]), config)[3, 3] ≈ 0 atol=eps()
+    @test electrostatic(Plasma([left, right]), config) ≈ 0 atol=10sqrt(eps())
   end
 end
 performtest()

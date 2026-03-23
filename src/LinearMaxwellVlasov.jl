@@ -6,6 +6,14 @@ const mₑ = 9.10938188e-31 # electron mass, SI units [kg]
 const c₀ = 2.99792458e8 # speed of light, SI units [m/s]
 const μ₀ = 1.25663706144e-6 # magnetic constant / permeability, SI units [N/A²]
 
+const DEFAULT_INTEGRAL_RANGE = 12
+const DEFAULT_MIN_HARMONICS = 2
+const DEFAULT_CAUCHY_DEFORMATION_ANGLE = 1e-6
+
+const DEFAULT_QUADORDER = 32
+const DEFAULT_QUADORDER_PARA = DEFAULT_QUADORDER
+const DEFAULT_QUADORDER_PERP = DEFAULT_QUADORDER
+
 # in order of inter-dependency
 include("./Tolerances.jl")
 include("./Convergers.jl")
@@ -49,7 +57,7 @@ export Cache
 # Plasmas
 export Plasma, NeutralPlasma, isneutral
 # Tensors
-export tensor, dielectric, electrostatictensor, conductivity
+export tensor, dielectric, electrostatic, conductivity
 
 __precompile__(true) # precompile dependencies
 # precompile for species types

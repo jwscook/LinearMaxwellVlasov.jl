@@ -12,6 +12,7 @@ A disribution function where vz and v⊥ are coupled, i.e. non-separable.
 - `normalisation::Tuple{U,U}`: the speeds used for normalisation in parallel and perp [m/s]
 - `lower::Float64`: minimum speed for integration bounds [m/s]
 - `upper::Float64`: maximum speed for integration bounds [m/s]
+- `autonormalise::Bool`: (true) whether to normalise automatically
 ...
 
 # Example
@@ -31,12 +32,13 @@ struct FCoupledVelocityNumerical{T<:Function, U<:Number
   lower::Float64 # minimum speed for integration bounds
   upper::Float64 # maximum speed for integration bounds
   function FCoupledVelocityNumerical(F::T, normalisation::Tuple{U,U},
-      lower=0.0, upper=4default_integral_range * norm(normalisation);
-      autonormalise::Bool=false) where {T, U}
+      lower=0.0, upper=DEFAULT_INTEGRAL_RANGE * norm(normalisation);
+      autonormalise::Bool=true) where {T, U}
     output = new{T,U}(F, normalisation, lower, upper)
     if autonormalise
       n = integrate(output)
       newf(vz, v⊥) = F(vz, v⊥) / n
+      newf(vz⊥) = newf(vz⊥[1], vz⊥[2])
       return new{typeof(newf),U}(newf, normalisation, lower, upper)
     else
       is_normalised(output) || throw(ArgumentError("F is not normalised"))
@@ -64,8 +66,11 @@ function FCoupledVelocityNumerical(vthz::Real, vth⊥::Real=vthz,
   Fz = ShiftedMaxwellianParallel(vthz, vdz)
   F⊥ = ShiftedMaxwellianPerpendicular(vth⊥, vd⊥)
   F = ShiftedMaxwellianCoupled(Fz, F⊥)
+  lower = max(0, min(abs(vdz) - DEFAULT_INTEGRAL_RANGE * vthz, abs(vd⊥) - DEFAULT_INTEGRAL_RANGE * vth⊥))
+  upper = sqrt((abs(vdz) + DEFAULT_INTEGRAL_RANGE * vthz)^2 +
+               (abs(vd⊥) + DEFAULT_INTEGRAL_RANGE * vth⊥)^2)
   normalisation = (vthz + abs(vdz), vth⊥ + abs(vd⊥))
-  return FCoupledVelocityNumerical(F, normalisation)
+  return FCoupledVelocityNumerical(F, normalisation, lower, upper)
 end
 
 function is_normalised(F::AbstractCoupledVelocity)
@@ -103,8 +108,8 @@ function FShell(vth::Real, vshell::Real)
   inv2vth² = 1 / 2 / vth^2
   funnormalised = v -> exp(-(sqrt(sum(x->x^2, v)) - vshell)^2 * inv2vth²)
 
-  lower = max(0.0, vshell - default_integral_range * vth)
-  upper = vshell + default_integral_range * vth
+  lower = max(0.0, vshell - DEFAULT_INTEGRAL_RANGE * vth)
+  upper = vshell + DEFAULT_INTEGRAL_RANGE * vth
 
   funnormalisedpolar = transformtopolar(funnormalised)
   function fpolar_for_normalisation(vrθ)
@@ -147,7 +152,7 @@ function FSlowingDown(vbeam::Real, vcrit::Real, vcutoffwidth::Real)
     return v⊥ / (u^3 + vcrit^3) * (1 + erf((vbeam - u) / vcutoffwidth)) / 2
   end
 
-  upper = vbeam + default_integral_range * vcutoffwidth
+  upper = vbeam + DEFAULT_INTEGRAL_RANGE * vcutoffwidth
 
   funnormalisedpolar = transformtopolar(funnormalised)
   function fpolar_for_normalisation(vrθ)
