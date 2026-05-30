@@ -182,7 +182,20 @@ function CoupledRelativisticSpecies(Π, Ω, m, pthz::Number, pth⊥=pthz, pzdrif
     FRelativisticNumerical(m, pthz, pth⊥, pzdrift); minharmonics)
 end
 
+"""
+    MaxwellJuttnerSpecies(Π,Ω,m,TeV)
 
+MaxwellJuttnerSpecies implements a species with a relativistic Maxwell-Juttner
+distribution function.
+
+...
+# Arguments
+- `Π`: classical plasma frequency [rad/s]
+- `Ω`: classical cyclotron frequency [rad/s]
+- `m`: mass [kg]
+- `TeV`: temperature [eV]
+...
+"""
 struct MaxwellJuttnerSpecies{
     TΠ<:Number, TΩ<:Number, Tm<:Number, T<:Number,
     } <: AbstractRelativisticSpecies
