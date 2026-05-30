@@ -24,6 +24,7 @@ Base.:-(p::Pole) = - p.pole
 Base.:-(x::Number, p::Pole) = x - p.pole
 Base.:-(p::Pole, x::Number) = p.pole - x
 Base.:-(d::Dual, p::Pole) = d - p.pole
+Base.:-(p::Pole, d::Dual) = p.pole - d
 Base.:+(x::Number, p::Pole) = x + p.pole
 Base.:+(p::Pole, x::Number) = p.pole + x
 Base.:*(x::Number, p::Pole) = x * p.pole

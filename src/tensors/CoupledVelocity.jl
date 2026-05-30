@@ -69,7 +69,7 @@ function numerator(nc::NewbergerClassical, vz, v⊥)
     U = (v⊥ * kz / Ω * dfdvz + a * dfdv⊥) # Eq 4 (multiplied by ω/Ω)
     T11 = a * (Ω / k⊥)^2 * (a * Q_a - sinπa)
     T12 = im / 2z * a * Qd_a * v⊥^2
-    T13 = (a * Q_a - sinπa) * (Ω / k⊥) * vz 
+    T13 = (a * Q_a - sinπa) * (Ω / k⊥) * vz
     T22 = (π * J_ad * Jad * v⊥^2 + sinπa * a * (Ω / k⊥)^2)
     T23 = - vz * im / 2 * Qd_a * v⊥
     T33 = Q_a * vz^2
@@ -105,13 +105,15 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
     t1 = @elapsed output, integral2Derrorestimate = if S.F.lower == 0
       HCubature.hcubature(vz⊥ -> nc((vz⊥[1] + im * deformation, vz⊥[2])),
         (-S.F.upper, 0.0), (S.F.upper, S.F.upper), initdiv=32,
-        rtol=cubartol, atol=cubaatol, maxevals=C.options.cubature_maxevals)
+        rtol=cubartol, atol=cubaatol, maxevals=C.options.cubature_maxevals,
+        norm=cubanorm)
     else
       @assert S.F.lower > 0
       ∫dvrdθ(vrθ) = vrθ[1] * nc(parallelperpfrompolar(vrθ) .+ (im * deformation, 0))
       HCubature.hcubature(∫dvrdθ,
         (S.F.lower, -π / 2), (S.F.upper, π / 2), initdiv=32,
-        rtol=cubartol, atol=cubaatol, maxevals=C.options.cubature_maxevals)
+        rtol=cubartol, atol=cubaatol, maxevals=C.options.cubature_maxevals,
+        norm=cubanorm)
     end
 
     if C.options.erroruponcubaturenonconvergence
@@ -136,7 +138,7 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
     uv⊥ = sqrt(max(S.F.upper^2 - abs2(pole), 0.0)) # abs2 to stop imag part blowing up f
     lv⊥ == uv⊥ && return zero(T0)
     return first(QuadGK.quadgk(inner, lv⊥, uv⊥; order=DEFAULT_QUADORDER_PERP,
-      atol=max(cubaatol, cubartol * norm(firstpart)), rtol=cubartol))
+      atol=max(cubaatol, cubartol * norm(firstpart)), rtol=cubartol, norm=quadnorm))
   end
 
   function robustresidue(firstpart)

@@ -27,7 +27,7 @@ Random.seed!(0)
   ω = 5.3545952051433167e11
   F = ComplexF64(ω, 0.0)
   K = Wavenumber(kz=kz, k⊥=k⊥)
-  options = LMV.Options(rtols=1e-5, cubature_maxevals=1_000_000,
+  options = LMV.Options(rtols=1e-5, cubature_maxevals=200_000_000,
                         erroruponcubaturenonconvergence=true,)
 
   config = Configuration(F, K, options)

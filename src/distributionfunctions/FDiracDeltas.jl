@@ -18,7 +18,7 @@ struct FPerpendicularDiracDelta{T<:Number} <: AbstractFPerpendicularNumerical
   inv2πv_drift::T
   _uniqueid::UInt64
   function FPerpendicularDiracDelta(v_drift::T) where {T<:Number}
-    @assert v_drift >= 0
+    @assert v_drift > 0
     inv2πv_drift = 1 / (2π * v_drift)
     _uniqueid = hash((v_drift), hash(:FPerpendicularDiracDelta))
     return new{T}(v_drift, inv2πv_drift, _uniqueid)

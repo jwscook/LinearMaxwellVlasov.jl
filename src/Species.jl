@@ -176,11 +176,27 @@ end
 ...
 
 """
-function CoupledRelativisticSpecies(Π, Ω, m, pthz::Number, pth⊥=pthz, pzdrift=0;
+function CoupledRelativisticSpecies(Π, Ω, m, pthz::Number, pth⊥=pthz, pzdrift=zero(pthz);
     minharmonics=DEFAULT_MIN_HARMONICS)
   return CoupledRelativisticSpecies(Π, Ω, m,
-    FRelativisticNumerical(pthz, pth⊥, pzdrift); minharmonics)
+    FRelativisticNumerical(m, pthz, pth⊥, pzdrift); minharmonics)
 end
+
+
+struct MaxwellJuttnerSpecies{
+    TΠ<:Number, TΩ<:Number, Tm<:Number, T<:Number,
+    } <: AbstractRelativisticSpecies
+  Π::TΠ # plasma frequency with rest mass
+  Ω::TΩ # cyclotron frequency with rest mass
+  m::Tm # rest mass of single particle in kg
+  TeV::T # temperature in eV
+  function MaxwellJuttnerSpecies(Π::TΠ, Ω::TΩ, m::Tm, TeV::T
+      ) where {TΠ, TΩ, Tm, T}
+    @warn "MaxwellJuttnerSpecies not stress tested"
+    return new{TΠ,TΩ,Tm,T}(Π, Ω, m, TeV)
+  end
+end
+
 
 """
     MaxwellianSpecies(Π,Ω,vthb,vth⊥=vthb,vdb=0.0)

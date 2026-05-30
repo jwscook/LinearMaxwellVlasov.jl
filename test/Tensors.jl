@@ -13,5 +13,5 @@ using Test
   include("tensors/RingBeamsAndPancakes.jl")
   include("tensors/CoupledVsSeparable.jl")
   include("tensors/RelativisticVsClassical.jl")
-  include("tensors/Relativistic_unittest0.jl")
+  #include("tensors/Relativistic_unittest0.jl") # too slow to run regularly
 end

@@ -9,6 +9,13 @@ function contribution(species::CoupledRelativisticSpecies,
   return relativisticmomentum(species, config)
 end
 
+include("tensors/MaxwellJuttner.jl")
+
+function contribution(species::MaxwellJuttnerSpecies,
+    config::Configuration, _::Cache=Cache())
+  return maxwelljuttner(species, config)
+end
+
 include("tensors/CoupledVelocity.jl")
 
 """
@@ -41,12 +48,12 @@ function contribution(species::AbstractSeparableVelocitySpecies,
   ⊥3F11, ⊥3F_1_1, ⊥3F1_1, ⊥2T11, ⊥2T_1_1, ⊥2T1_1, ⊥2F10, ⊥2F0_1, ⊥1F00, ⊥1T10, ⊥1T0_1 = ∫⊥s
 
   @cse @muladd begin
-    m11 = (kz*(-(⊥2T11 + 2*⊥2T1_1 + ⊥2T_1_1)*z1F + (⊥3F11 + 2*⊥3F1_1 + ⊥3F_1_1)*z0T) + (⊥2T11 + 2*⊥2T1_1 + ⊥2T_1_1)*ω*z0F)/4
-    m21 = im*(kz*((-⊥2T11 + ⊥2T_1_1)*z1F + (⊥3F11 - ⊥3F_1_1)*z0T) + (⊥2T11 - ⊥2T_1_1)*ω*z0F)/4
+    m11 = ((⊥2T11 + 2*⊥2T1_1 + ⊥2T_1_1)*(ω*z0F - kz*z1F) + (⊥3F11 + 2*⊥3F1_1 + ⊥3F_1_1)*kz*z0T)/4
+    m21 = im*((-⊥2T11 + ⊥2T_1_1)*(kz*z1F - ω*z0F) + (⊥3F11 - ⊥3F_1_1)*kz*z0T)/4
     m31 = (kz*(-(⊥1T0_1 + ⊥1T10)*z2F + (⊥2F0_1 + ⊥2F10)*z1T) + (⊥1T0_1 + ⊥1T10)*ω*z1F)/2
     m12 = -m21 # Onsager -im*(kz*((-⊥2T11 + ⊥2T_1_1)*z1F + (⊥3F11 - ⊥3F_1_1)*z0T) + (⊥2T11 - ⊥2T_1_1)*ω*z0F)/4
     m22 = (kz*(-(⊥2T11 - 2*⊥2T1_1 + ⊥2T_1_1)*z1F + (⊥3F11 - 2*⊥3F1_1 + ⊥3F_1_1)*z0T) + (⊥2T11 - 2*⊥2T1_1 + ⊥2T_1_1)*ω*z0F)/4
-    m32 = -im*(kz*((⊥1T0_1 - ⊥1T10)*z2F + (⊥2F10 - ⊥2F0_1)*z1T) + (⊥1T10 - ⊥1T0_1)*ω*z1F)/2
+    m32 = -im*((⊥1T0_1 - ⊥1T10)*(kz*z2F - ω*z1F) + (⊥2F10 - ⊥2F0_1)*kz*z1T)/2
     m13 = m31 # Onsager (k⊥*((⊥2T11 + 2*⊥2T1_1 + ⊥2T_1_1)*z1F + (-⊥3F11 - 2*⊥3F1_1 - ⊥3F_1_1)*z0T) + 2*(⊥2F0_1 + ⊥2F10)*ω*z0T)/4
     m23 = -m32 # Onsager im*(k⊥*(⊥2T11 - ⊥2T_1_1)*z1F + (k⊥*(⊥3F_1_1 - ⊥3F11) + 2*(⊥2F10 - ⊥2F0_1)*ω)*z0T)/4
     m33 = (k⊥*(⊥1T0_1 + ⊥1T10)*z2F + (-k⊥*(⊥2F0_1 + ⊥2F10) + 2*⊥1F00*ω)*z1T)/2

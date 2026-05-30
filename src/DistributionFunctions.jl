@@ -17,7 +17,6 @@ abstract type AbstractFRelativisticMomentum <: AbstractFCoupledMomentum end
 
 uniqueid(f::AbstractDistributionFunction) = f._uniqueid
 
-quadnorm(x) = maximum(norm.(x))
 function is_normalised(f::AbstractDistributionFunction)
   return isapprox(integrate(f), 1, atol=0, rtol=10000 * eps())
 end
