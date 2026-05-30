@@ -152,3 +152,14 @@ const LMV = LinearMaxwellVlasov
     end
   end
 end
+
+@testset "stablequadraticroots" begin
+  for i in 1:100
+    a, b, c = randn(ComplexF64, 3)
+    r1 = (-b + sqrt(b^2 - 4*a*c))/2a
+    r2 = (-b - sqrt(b^2 - 4*a*c))/2a
+    a1, a2 = LMV.stablequadraticroots(a, b, c)
+    @test r1 ≈ a1 || r1 ≈ a2
+    @test r2 ≈ a2 || r2 ≈ a1
+  end
+end

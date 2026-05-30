@@ -1,6 +1,9 @@
 using DualNumbers, LinearAlgebra, MuladdMacro, SpecialFunctions, StaticArrays
 using CommonSubexpressions, HypergeometricFunctions
 
+quadnorm(x) = norm(x)
+cubanorm(x) = norm(x)
+
 derivative(f::T, x::Number) where {T} = DualNumbers.dualpart(f(Dual(x, 1)))
 
 import Base.^
@@ -140,3 +143,30 @@ function (c::ConcertinaSinpi)(tv⊥)
   end
   return output / sinpi(t)
 end
+
+"""
+    stablequadraticroots(a, b, c)
+
+Return the two roots of `a*x^2 + b*x + c = 0` computed in a way that avoids
+catastrophic cancellation when `|b|` is much larger than `√|4ac|`. Uses
+Vieta's formula for the smaller-magnitude root.
+"""
+@inline function stablequadraticroots(a, b, c)
+  nrm = maximum(abs, (a, b, c))
+  b /= nrm
+  c /= nrm
+  a /= nrm
+  if iszero(b)
+    r = sqrt(-c / a)
+    return (-r, r)
+  end
+  d = sqrt(b^2 - 4*a*c)
+  # Choose the sign of d whose projection onto b is non-negative, so that
+  # (b + sgn*d) has magnitude ~|b| + |d| (no cancellation). Works for real
+  # or complex b, d: real(conj(b)*d) is b·d in the real case and the inner
+  # product of b and d viewed as 2-vectors in the complex case.
+  sgn = real(conj(b) * d) >= 0 ? 1 : -1
+  q = -(b + sgn * d) / 2
+  return (q / a, c / q)
+end
+

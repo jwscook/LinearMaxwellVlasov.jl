@@ -25,40 +25,46 @@ include("species/NumericalSpecies.jl")
   small = 100*sqrt(eps())
   vth = Va * small
   cold = ColdSpecies(Πi, Ωi)
-  
+
   @test plasmafrequency(cold) == cold.Π
   @test cyclotronfrequency(cold) == cold.Ω
   @test LMV.is_normalised(cold)
-  
+
   warm = WarmSpecies(Πi, Ωi, vth)
-  
+
   @test ColdSpecies(warm) == cold
-  
+
   maxwellian = MaxwellianSpecies(Πi, Ωi, vth, vth)
-  
+
   @test LMV.is_normalised(maxwellian)
   @test ColdSpecies(maxwellian) == cold
   @test WarmSpecies(maxwellian, 1) == warm
-  
+
   separable = SeparableVelocitySpecies(Πi, Ωi,
       FParallelNumerical(vth),
       FPerpendicularNumerical(vth))
-  
+
   @test maxwellian(vth, vth) == maxwellian([vth, vth])
   @test separable(vth, vth) ≈ maxwellian(vth, vth) rtol=1e-4
-  
+
   @test ColdSpecies(separable) == cold
-  
+
   ringbeam = RingBeamSpecies(Πi, Ωi, vth, vth)
-  
+
   @test LMV.is_normalised(ringbeam)
-  
+
   coupled = CoupledVelocitySpecies(Πi, Ωi, vth, vth)
-  
+
   @test LMV.is_normalised(coupled)
-  
+
   coupled = CoupledVelocitySpecies(Πi, Ωi, vth)
   @test coupled(vth, vth) ≈ maxwellian(vth, vth)
+
+  vth = 1.0
+  maxwellian = MaxwellianSpecies(Πi, Ωi, vth)
   relativistic = CoupledRelativisticSpecies(Πi, Ωi, mi, vth * mi)
   @test maxwellian(vth, vth) ≈ relativistic(mi * vth, mi * vth) * mi^3
+  @test maxwellian(2vth, 2vth) ≈ relativistic(mi * 2vth, mi * 2vth) * mi^3
+  @test maxwellian(4vth, 4vth) ≈ relativistic(mi * 4vth, mi * 4vth) * mi^3
 end
+

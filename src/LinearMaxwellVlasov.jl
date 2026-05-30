@@ -52,6 +52,7 @@ export FParallelDiracDelta, FPerpendicularDiracDelta
 # Species
 export ColdSpecies, WarmSpecies, MaxwellianSpecies, RingBeamSpecies
 export SeparableVelocitySpecies, CoupledVelocitySpecies, CoupledRelativisticSpecies
+export MaxwellJuttnerSpecies
 # Integrals
 export Cache
 # Plasmas
@@ -65,7 +66,7 @@ for s in (
     ColdSpecies{Float64,Float64},
     SeparableVelocitySpecies{Float64,Float64,FBeam,FRing},
     CoupledVelocitySpecies{Float64,Float64,FCoupledVelocityNumerical{ShiftedMaxwellianCoupled{Float64,Float64,Float64,Float64},Float64}},
-    CoupledRelativisticSpecies{Float64,Float64,Float64,FRelativisticNumerical{RelativisticMaxwellian,Float64}})
+    CoupledRelativisticSpecies{Float64,Float64,Float64,FRelativisticNumerical{MaxwellJuttner,Float64}})
   precompile(dielectric, (s, Configuration{ComplexF64, Float64, Float64, Float64}))
 end
 
