@@ -91,9 +91,14 @@ Random.seed!(0)
       K = Wavenumber(parallel=kz, perpendicular=σ * k⊥)
       config = Configuration(F, K)
       cN = LMV.perpendicular(C, config, n)
-      memoisedperpendicular = LMV.perpendicular_integral(C, config)
+      cache = LMV.Cache()
+      memoisedperpendicular = LMV.perpendicular_integral(C, config, cache.perpendicular)
       cM = memoisedperpendicular(C, config, n)
       @test all(isapprox.(cN, cM))
+      s0 = Base.summarysize(cache)
+      empty!(cache)
+      s1 = Base.summarysize(cache)
+      @test s1 < s0
     end
   end
 end

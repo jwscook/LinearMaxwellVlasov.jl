@@ -27,6 +27,7 @@ struct CacheDict{C,V} <: AbstractDict{UInt64, V}
     return new{C,V}(Dict{UInt64,V}(keyval))
   end
 end
+#Base.empty!(c::CacheDict) = (empty!(c.data); return c)
 
 mutable struct Cache
   parallel::Dict{UInt64,CacheDict{ParallelCache}}
@@ -38,6 +39,8 @@ Cache() = Cache(Dict{UInt64,CacheDict{ParallelCache}}(),
 
 typehash(::Type{ParallelCache}, s) = uniqueid(s.Fz)::UInt64
 typehash(::Type{PerpendicularCache}, s) = uniqueid(s.F⊥)::UInt64
+
+Base.empty!(c::Cache) = (map(empty!, (c.parallel, c.perpendicular)); return c)
 
 """
     Base.get!(f::F,data::Dict{UInt64,CacheDict{C}},species,config)where{F<:Function,C<:AbstractCacheType}
