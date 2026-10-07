@@ -89,7 +89,7 @@ Random.seed!(0)
     end
     for n ∈ (-3:3), σ ∈ (-1, 1)
       K = Wavenumber(parallel=kz, perpendicular=σ * k⊥)
-      config = Configuration(F, K)
+      config = Configuration(F, K, Options(memoiseperpendicular=true))
       cN = LMV.perpendicular(C, config, n)
       cache = LMV.Cache()
       memoisedperpendicular = LMV.perpendicular_integral(C, config, cache.perpendicular)
