@@ -20,7 +20,7 @@ function brambilladielectriccontribution(species, config, cyclotronharmonic::Int
 
   ω = config.frequency
   kz, k⊥ = para(config.wavenumber), perp(config.wavenumber)
- 
+
   n = cyclotronharmonic
   Ω = species.Ω
   nΩ = n * species.Ω
@@ -29,7 +29,7 @@ function brambilladielectriccontribution(species, config, cyclotronharmonic::Int
   λ = μ^2 / 2
   Inexp = besseli(n, λ) * exp(-λ)
   Idnexp = (besseli(n - 1, λ) + besseli(n + 1, λ) ) / 2 * exp(-λ)
-  xn = (ω - nΩ) / kz / vth 
+  xn = (ω - nΩ) / kz / vth
   x0 = ω / kz / vth
   Zxn = LMV.plasma_dispersion_function(xn, 0)
   Zdxn = -2 * (1 + xn * Zxn)
