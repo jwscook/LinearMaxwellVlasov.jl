@@ -147,12 +147,16 @@ maxwellian distribution function, having summed over bessel indices n.
 """
 function contribution(species::AbstractSeparableVelocitySpecies,
     config::Configuration, cache::Cache=Cache())
-
   ∫para = parallel_integral(species, config, cache.parallel)
   ∫perp = perpendicular_integral(species, config, cache.perpendicular)
+  return harmonicsum(species, config, ∫para, ∫perp)
+end
 
+# A function barrier: ∫para and ∫perp are each either the plain or the memoised
+# integral, depending on the options, so their types are only known at run time.
+function harmonicsum(species, config::Configuration, ∫para::U, ∫perp::V
+    ) where {U<:Function, V<:Function}
   f = n -> contribution(species, config, n, ∫para, ∫perp)
-
   return converge(f, minharmonics(species), config.options.summation_tol)
 end
 
@@ -162,9 +166,7 @@ maxwellian distribution function, having summed over bessel indices n.
 """
 function contribution(species::AbstractKineticSpecies, config::Configuration,
     _::Cache=Cache())
-
   f = n -> contribution(species, config, n)
-
   return converge(f, minharmonics(species), config.options.summation_tol)
 end
 

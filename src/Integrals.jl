@@ -64,7 +64,9 @@ function Base.get!(f::F, data::Dict{UInt64,CacheDict{C}}, species, config
   key = typehash(C, species)
   args = (species, config, 0)
   subkey, cacheop = CacheKeyAndOp{C}(args...)
-  return get!(()->CacheDict{C}(subkey=>cacheop(f(args...))), data, key)
+  cache = get!(()->CacheDict{C}(subkey=>cacheop(f(args...))), data, key)
+  V = Base.promote_op(f, typeof.(args)...)
+  return isconcretetype(V) ? cache::CacheDict{C,V} : cache
 end
 
 """

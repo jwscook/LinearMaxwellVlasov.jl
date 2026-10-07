@@ -64,12 +64,12 @@ over a drifting Maxwellian subject to the relevant kernels. All this is
 calculated here.
 """
 function MaxwellianIntegralsParallel(vth, vd, ω, kz, nΩ)
-  T = promote_type(typeof.((vth, vd, ω, kz, nΩ))...)
+  T = complex(promote_type(typeof.((vth, vd, ω, kz, nΩ))...))
   causalconj(z) = real(kz) >= 0 ? z : conj(z)
   if iszero(kz) # no need to do anything difficult!
-    ∫⁰ = T(1 / (ω - nΩ))
-    ∫¹ = T(vd / (ω - nΩ))
-    ∫² = T((vth^2 / 2 + vd^2) / (ω - nΩ))
+    ∫⁰ = convert(T, 1 / (ω - nΩ))
+    ∫¹ = convert(T, vd / (ω - nΩ))
+    ∫² = convert(T, (vth^2 / 2 + vd^2) / (ω - nΩ))
   else
     σ⁻¹ = 1 / (kz * vth)
     @muladd z = (ω - kz * vd - nΩ) * σ⁻¹
