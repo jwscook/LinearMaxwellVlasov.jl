@@ -27,7 +27,6 @@ struct CacheDict{C,V} <: AbstractDict{UInt64, V}
     return new{C,V}(Dict{UInt64,V}(keyval))
   end
 end
-#Base.empty!(c::CacheDict) = (empty!(c.data); return c)
 
 mutable struct Cache
   parallel::Dict{UInt64,CacheDict{ParallelCache}}
