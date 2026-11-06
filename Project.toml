@@ -1,7 +1,7 @@
 name = "LinearMaxwellVlasov"
 uuid = "b1137d70-0135-468f-bb3e-ace6f597c457"
-authors = ["James Cook <cookjws@gmail.com>"]
 version = "0.2.1"
+authors = ["James Cook <cookjws@gmail.com>"]
 
 [deps]
 CommonSubexpressions = "bbf7d656-a473-5ed7-a52c-81e309532950"
@@ -13,6 +13,7 @@ LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 MuladdMacro = "46d2c3a1-f734-5fdb-9937-b9b9aeba4221"
 PlasmaDispersionFunctions = "9207f8dc-3231-463e-84ff-2de753abf806"
 QuadGK = "1fd47b50-473d-5c70-9696-f719f8f3bcdc"
+SeriesAccelerators = "9dd7a2f8-ab8d-577c-ac83-a3992ff7c30e"
 SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
@@ -28,6 +29,7 @@ HCubature = "≥ 1.5.1"
 Memoize = "≥ 0.4.4"
 PlasmaDispersionFunctions = "≥ 0.1.0"
 QuadGK = "≥ 2.4.1"
+SeriesAccelerators = "0.3.0"
 SpecialFunctions = "≥ 1.5.1"
 StaticArrays = "≥ 1.2.7"
 
