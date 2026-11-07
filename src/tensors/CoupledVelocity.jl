@@ -46,15 +46,15 @@ function numerator(nc::NewbergerClassical, vz, v⊥)
   f = S(real(vz), v⊥)
   T = promote_type(typeof.((f, a, z))...)
   # if the real part of f squared is zero, then there are no particles at (vz, v⊥)
-  iszero(f^2) && return @MArray zeros(T, 3, 3)
+  iszero(f^2) && return @SArray zeros(T, 3, 3)
 
   dfdvz = DualNumbers.dualpart(S(Dual(vz, 1), v⊥))
   @assert !isnan(dfdvz) ("!isnan(dfdvz)", vz, v⊥)
   dfdv⊥ = DualNumbers.dualpart(S(vz, Dual(v⊥, 1)))
   @assert !isnan(dfdv⊥) ("!isnan(dfdv⊥)", vz, v⊥)
-  (iszero(dfdvz) && iszero(dfdv⊥)) && return @MArray zeros(T, 3, 3)
+  (iszero(dfdvz) && iszero(dfdv⊥)) && return @SArray zeros(T, 3, 3)
 
-  Jadual, J_adual = besselj_v(MVector(a, -a), Dual(z, 1); maxiters=2^20)
+  Jadual, J_adual = besselj_v(SVector(a, -a), Dual(z, 1); maxiters=2^20)
   Ja, Jad = DualNumbers.realpart(Jadual), DualNumbers.dualpart(Jadual)
   J_a, J_ad = DualNumbers.realpart(J_adual), DualNumbers.dualpart(J_adual)
   @assert !isnan(Ja) ("!isnan(Ja)", dfdvz, dfdv⊥, Ja, Jad, J_a, J_ad)
@@ -77,7 +77,7 @@ function numerator(nc::NewbergerClassical, vz, v⊥)
     T31 = T13
     T32 = -T23
   end
-  Tij = @MArray [T11 T12 T13; T21 T22 T23; T31 T32 T33]
+  Tij = @SArray [T11 T12 T13; T21 T22 T23; T31 T32 T33]
   Xij = (2π * U) .* Tij # Eq 34, part
   Xij[3, 3] += Xzz * sinπa
   @assert !any(isnan, Xij) (Xij, vz, v⊥)
@@ -130,6 +130,8 @@ function coupledvelocity(S::AbstractCoupledVelocitySpecies, C::Configuration)
     @assert pole.deformation == deformation
     function inner(v⊥)
       laurentnumerator(x) = -(-1)^n * Ω * numerator(nc, x, v⊥) / kz / π
+      σ = residuesigma(pole)
+      iszero(σ) && return zero(firstpart)
       output = residue(laurentnumerator, pole)
       @assert !any(isnan, output)
       return output

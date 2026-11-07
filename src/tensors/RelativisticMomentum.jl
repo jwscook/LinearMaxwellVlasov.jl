@@ -7,7 +7,7 @@ struct NewbergerRelativistic{S,T,U,V}
   ω::T
   kz::U
   k⊥::V
-  count::Ref{Int}
+  count::Base.RefValue{Int}
 end
 NewbergerRelativistic(s, ω, kz, k⊥) = NewbergerRelativistic(s, ω, kz, k⊥, Ref(0))
 
@@ -49,10 +49,10 @@ function numerator(nr::NewbergerRelativistic, pz⊥)
 
   if iszero(dfdpz) && iszero(dfdp⊥)
     T = promote_type((eltype.((γξ⊥, a, dfdpz, dfdp⊥)))...)
-    return @MArray zeros(T, 3, 3)
+    return @SArray zeros(T, 3, 3)
   end
 
-  Jadual, J_adual = besselj_v(MVector(a, -a), Dual(γξ⊥, 1))
+  Jadual, J_adual = besselj_v(SVector(a, -a), Dual(γξ⊥, 1))
   Ja, Jad = DualNumbers.realpart(Jadual), DualNumbers.dualpart(Jadual)
   J_a, J_ad = DualNumbers.realpart(J_adual), DualNumbers.dualpart(J_adual)
   @assert !isnan(Ja)
@@ -60,29 +60,30 @@ function numerator(nr::NewbergerRelativistic, pz⊥)
   @assert !isnan(Jad)
   @assert !isnan(J_ad)
 
-  θF = p⊥ * dfdpz - pz * dfdp⊥
+  @cse begin
+    θF = p⊥ * dfdpz - pz * dfdp⊥
+    Qxx = p⊥ / γξ⊥^2 * (dfdp⊥ + kz / (m * γ * ω) * θF) * (π * a * Ja * J_a - sinπa) * a
+    Qxy = im * p⊥ / γξ⊥ * (dfdp⊥ + kz / (m * γ * ω) * θF) * (π * a * Ja * J_ad + a * sinπa / γξ⊥)
+    Qxz = (p⊥ * dfdpz) * (π * a * Ja * J_a) / γξ⊥
+    Qxz -= (Ω / (γ * ω) * θF) * (π * a * Ja * J_ad - sinπa) * a / γξ⊥
+    Qyx = -Qxy
+    Qyy = p⊥ * (dfdp⊥ + kz / (m * γ * ω) * θF) * (π * Jad * J_ad + a * sinπa / γξ⊥^2)
+    Qyz = -im * p⊥ * dfdpz * (π * Ja * J_ad)
+    Qyz += im * (Ω / (γ * ω) * θF) * (π * a * Ja * J_ad + a * sinπa / γξ⊥)
+    Qzx = pz / γξ⊥ * (dfdp⊥ + kz / (m * γ * ω) * θF) * (π * a * Ja * J_a)
+    Qzy = im * pz * (dfdp⊥ + kz / (m * γ * ω) * θF) * (π * Ja * J_ad)
+    Qzz = pz * dfdpz * (π * Ja * J_a)
+    Qzz -= pz / p⊥ * Ω / (γ * ω) * θF * (π * a * Ja * J_a)
+  end
 
-  Qxx = p⊥ / γξ⊥^2 * (dfdp⊥ + kz / (m * γ * ω) * θF) * (π * a * Ja * J_a - sinπa) * a
-  Qxy = im * p⊥ / γξ⊥ * (dfdp⊥ + kz / (m * γ * ω) * θF) * (π * a * Ja * J_ad + a * sinπa / γξ⊥)
-  Qxz = (p⊥ * dfdpz) * (π * a * Ja * J_a) / γξ⊥
-  Qxz -= (Ω / (γ * ω) * θF) * (π * a * Ja * J_ad - sinπa) * a / γξ⊥
-  Qyx = -Qxy
-  Qyy = p⊥ * (dfdp⊥ + kz / (m * γ * ω) * θF) * (π * Jad * J_ad + a * sinπa / γξ⊥^2)
-  Qyz = -im * p⊥ * dfdpz * (π * Ja * J_ad)
-  Qyz += im * (Ω / (γ * ω) * θF) * (π * a * Ja * J_ad + a * sinπa / γξ⊥)
-  Qzx = pz / γξ⊥ * (dfdp⊥ + kz / (m * γ * ω) * θF) * (π * a * Ja * J_a)
-  Qzy = im * pz * (dfdp⊥ + kz / (m * γ * ω) * θF) * (π * Ja * J_ad)
-  Qzz = pz * dfdpz * (π * Ja * J_a)
-  Qzz -= pz / p⊥ * Ω / (γ * ω) * θF * (π * a * Ja * J_a)
-
-  Qij = @MArray [Qxx Qxy Qxz; Qyx Qyy Qyz; Qzx Qzy Qzz]
+  Qij = @SArray [Qxx Qxy Qxz; Qyx Qyy Qyz; Qzx Qzy Qzz]
   if !all(!isnan, Qij)
     @show pz, p⊥, a, γξ⊥, dfdpz, dfdp⊥, γ
     @show Ja, J_a, Jad, J_ad
   end
   @assert all(!isnan, Qij) (Qij, a, Ja, J_a, Jad, J_ad, dfdpz, dfdp⊥)
   common = 2π * p⊥ * ω / Ω
-  Qij .*= common
+  Qij *= common
   return Qij
 end
 
@@ -118,11 +119,8 @@ function relativisticmomentum(S::CoupledRelativisticSpecies, C::Configuration)
   kz, k⊥ = para(C.wavenumber), perp(C.wavenumber)
 
   @assert !iszero(k⊥) "Perpendicular wavenumber must not be zero"
-  polesarereal = all(iszero, imag.((ω, kz, k⊥)))
 
   integrand = NewbergerRelativistic(S, ω, kz, k⊥)
-
-  bound = 1 - sqrt(eps())
 
   cubaatol = C.options.cubature_tol.abs
   cubartol = C.options.cubature_tol.rel
@@ -132,7 +130,7 @@ function relativisticmomentum(S::CoupledRelativisticSpecies, C::Configuration)
 
   function integral2D()
     t1 = @elapsed output, errorestimate = HCubature.hcubature(x->integrand((x[1] + im * deformation, x[2])),
-      (-20pchar, 0), (20pchar, 20pchar), initdiv=16,
+      (-8pchar, 0), (8pchar, 8pchar), initdiv=16,
       rtol=cubartol, atol=cubaatol, maxevals=C.options.cubature_maxevals, norm=cubanorm)
     if C.options.erroruponcubaturenonconvergence
       msg = "error / val = $(errorestimate / norm(output))"
@@ -151,6 +149,8 @@ function relativisticmomentum(S::CoupledRelativisticSpecies, C::Configuration)
     function alllocalresidues(n)
       pole = momentumpole(integrand, p⊥, n, deformation)
       @assert pole.deformation == deformation
+      σ = residuesigma(pole)
+      iszero(σ) && return zero(pv)
       output1 = residue(x->laurentnumerator(integrand, (x, p⊥), n), pole)
       @assert !any(isnan, output1)
       return output1
@@ -160,12 +160,12 @@ function relativisticmomentum(S::CoupledRelativisticSpecies, C::Configuration)
     return output
   end
   function integralsnested1D(∫dpz::T, pv) where {T<:Function}
-    p⊥normalisation = S.F.normalisation[2]
+    p⊥normalisation = S.F.normalisation[2] * DEFAULT_INTEGRAL_RANGE
     transformfunctor = TransformFromInfinity(x->∫dpz(x, pv), p⊥normalisation)
     return first(QuadGK.quadgk(
       transformfunctor,
       coordinate(transformfunctor, p⊥normalisation * 1e-16),
-      coordinate(transformfunctor, p⊥normalisation * 1e3),
+      coordinate(transformfunctor, p⊥normalisation),
       atol=max(C.options.quadrature_tol.abs, outertol * norm(pv) / 2),
       rtol=outertol, norm=quadnorm))
   end
