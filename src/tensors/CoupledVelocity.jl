@@ -72,14 +72,13 @@ function numerator(nc::NewbergerClassical, vz, v⊥)
     T13 = (a * Q_a - sinπa) * (Ω / k⊥) * vz
     T22 = (π * J_ad * Jad * v⊥^2 + sinπa * a * (Ω / k⊥)^2)
     T23 = - vz * im / 2 * Qd_a * v⊥
-    T33 = Q_a * vz^2
+    T33 = Q_a * vz^2 + Xzz * sinπa / (2π * U)
     T21 = -T12
     T31 = T13
     T32 = -T23
   end
   Tij = @SArray [T11 T12 T13; T21 T22 T23; T31 T32 T33]
   Xij = (2π * U) .* Tij # Eq 34, part
-  Xij[3, 3] += Xzz * sinπa
   @assert !any(isnan, Xij) (Xij, vz, v⊥)
   return Xij # Eq 34 (U is multiplied by ω)
 end
