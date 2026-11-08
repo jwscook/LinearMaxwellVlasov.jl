@@ -22,7 +22,6 @@ function pseudoharmonic(nr::NewbergerRelativistic, pz⊥)
   return (s + e) * nr.ω / nr.species.Ω
 end
 
-
 denominator(nr::NewbergerRelativistic, pz⊥) = sinpi(pseudoharmonic(nr, pz⊥))
 function (nr::NewbergerRelativistic)(pz⊥)
   return numerator(nr, pz⊥) ./ denominator(nr, pz⊥)
@@ -55,7 +54,7 @@ function numerator(nr::NewbergerRelativistic, pz⊥)
   Jadual, J_adual = besselj_v(SVector(a, -a), Dual(γξ⊥, 1))
   Ja, Jad = DualNumbers.realpart(Jadual), DualNumbers.dualpart(Jadual)
   J_a, J_ad = DualNumbers.realpart(J_adual), DualNumbers.dualpart(J_adual)
-  @assert !isnan(Ja)
+  @assert !isnan(Ja) (a, γξ⊥)
   @assert !isnan(J_a)
   @assert !isnan(Jad)
   @assert !isnan(J_ad)
@@ -120,6 +119,9 @@ function relativisticmomentum(S::CoupledRelativisticSpecies, C::Configuration)
 
   @assert !iszero(k⊥) "Perpendicular wavenumber must not be zero"
 
+  nz = real(c₀ * kz / ω)
+  boostvelocity = abs2(nz) < 1 ? nz * c₀ : c₀ / nz
+  boostgamma = 1 / sqrt(1 - (boostvelocity / c₀)^2)
   integrand = NewbergerRelativistic(S, ω, kz, k⊥)
 
   cubaatol = C.options.cubature_tol.abs
@@ -128,9 +130,19 @@ function relativisticmomentum(S::CoupledRelativisticSpecies, C::Configuration)
   deformation = imagcontourdeformation(ω / kz, real(kz) >= 0 ? 1 : -1,
     pchar * DEFAULT_INTEGRAL_RANGE / S.m, C.options.cauchydeformationangle) * S.m
 
+  deboostedp(p) = boostgamma * (p[1] + fγ(integrand, p) * S.m * boostvelocity)
+
+  function boostedintegrand(pd)
+    pbot = pd[2]
+    pz = deboostedp(pd) + im * deformation
+    # jacobian of a real change of variable should be real
+    jacobian = fγ(integrand, (real(pz), pbot)) / fγ(integrand, pd)
+    return integrand((pz, pbot)) * jacobian
+  end
+
   function integral2D()
-    t1 = @elapsed output, errorestimate = HCubature.hcubature(x->integrand((x[1] + im * deformation, x[2])),
-      (-8pchar, 0), (8pchar, 8pchar), initdiv=16,
+    t1 = @elapsed output, errorestimate = HCubature.hcubature(boostedintegrand,
+      (-24pchar, 0), (24pchar, 24pchar), initdiv=16,
       rtol=cubartol, atol=cubaatol, maxevals=C.options.cubature_maxevals, norm=cubanorm)
     if C.options.erroruponcubaturenonconvergence
       msg = "error / val = $(errorestimate / norm(output))"
