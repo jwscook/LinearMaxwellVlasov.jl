@@ -120,8 +120,18 @@ function relativisticmomentum(S::CoupledRelativisticSpecies, C::Configuration)
   @assert !iszero(k⊥) "Perpendicular wavenumber must not be zero"
 
   nz = real(c₀ * kz / ω)
-  boostvelocity = abs2(nz) < 1 ? nz * c₀ : c₀ / nz
+  βmax = 0.98
+  # boost goes wrong if the frame velocity is too close to c₀
+  boostvelocity = clamp(abs2(nz) < 1 ? nz : 1 / nz, -βmax, βmax) * c₀
   boostgamma = 1 / sqrt(1 - (boostvelocity / c₀)^2)
+
+  rotate = abs(nz) < 1 / βmax && imag(ω) >= c₀ * imag(kz)
+  # deformation of p⊥ if poles are all below the necessary line and phase is sublight
+  # p⊥ is always positive so the imaginary deformation is always positive
+  # p⊥ can't have an constant imaginary offset because although the ∞ end has f->0
+  # the 0 end doesn't hence it must have zero imaginary part i.e. 0+iδ -> ∞+iδ
+  rotation = cis(rotate ? 0.01 : 0.0)
+
   integrand = NewbergerRelativistic(S, ω, kz, k⊥)
 
   cubaatol = C.options.cubature_tol.abs
@@ -132,17 +142,17 @@ function relativisticmomentum(S::CoupledRelativisticSpecies, C::Configuration)
 
   deboostedp(p) = boostgamma * (p[1] + fγ(integrand, p) * S.m * boostvelocity)
 
-  function boostedintegrand(pd)
-    pbot = pd[2]
-    pz = deboostedp(pd) + im * deformation
+  function boostedintegrand(pboost)
+    plab = (deboostedp(pboost) + im * deformation, pboost[2] * rotation)
     # jacobian of a real change of variable should be real
-    jacobian = fγ(integrand, (real(pz), pbot)) / fγ(integrand, pd)
-    return integrand((pz, pbot)) * jacobian
+    jacobian = fγ(integrand, real.(plab)) / fγ(integrand, pboost)
+    return integrand(plab) * jacobian
   end
 
+  pz0 = boostgamma * S.m * boostvelocity # centre of new frame
   function integral2D()
     t1 = @elapsed output, errorestimate = HCubature.hcubature(boostedintegrand,
-      (-24pchar, 0), (24pchar, 24pchar), initdiv=16,
+      (-24pchar - pz0, 0), (24pchar - pz0, 24pchar), initdiv=16,
       rtol=cubartol, atol=cubaatol, maxevals=C.options.cubature_maxevals, norm=cubanorm)
     if C.options.erroruponcubaturenonconvergence
       msg = "error / val = $(errorestimate / norm(output))"
@@ -183,7 +193,7 @@ function relativisticmomentum(S::CoupledRelativisticSpecies, C::Configuration)
   end
 
   result = integral2D()
-  if !iszero(kz)
+  if !iszero(kz) && !(imag(ω) >= c₀ * imag(kz))
     result += integralsnested1D(relativisticresidue, result)
   end
   return result
