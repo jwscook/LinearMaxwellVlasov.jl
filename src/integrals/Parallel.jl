@@ -46,7 +46,9 @@ function parallel(Fz::AbstractFParallelNumerical, ω::Number, k::Wavenumber,
   return if iszero(kz)
     integrate(Fz, pkn, ∂F∂v, tol) / V(nΩ - ω)
   else
-    pole = Pole((ω - nΩ) / kz, k.causalsign, cauchydeformationangle)
+    p = (ω - nΩ) / kz
+    pole = Pole(p, k.causalsign, imagcontourdeformation(p, k.causalsign,
+      maximum(abs, (ω / kz, p)), cauchydeformationangle))
     integrate(Fz, pkn, pole, ∂F∂v, tol) / V(kz)
   end
 end

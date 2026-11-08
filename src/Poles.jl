@@ -76,7 +76,7 @@ function imagcontourdeformation(pole, causalsign, vchar::Real, θ=DEFAULT_CAUCHY
   riparts(x::Complex) = reim(x)
   r, i = riparts(pole)
   T = promote_type(real(typeof(pole)), typeof(vchar), typeof(θ))
-  deformation = if (!iszero(i) && abs(angle(pole)) >= θ)
+  deformation = if (!iszero(i) && (abs(i) >= tan(θ) * abs(r)))
     zero(T)
   elseif iszero(pole) || !isfinite(i)
     -T(tan(θ) * vchar)
