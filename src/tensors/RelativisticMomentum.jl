@@ -125,12 +125,12 @@ function relativisticmomentum(S::CoupledRelativisticSpecies, C::Configuration)
   boostvelocity = clamp(abs2(nz) < 1 ? nz : 1 / nz, -βmax, βmax) * c₀
   boostgamma = 1 / sqrt(1 - (boostvelocity / c₀)^2)
 
-  rotate = abs(nz) < 1 / βmax && imag(ω) >= c₀ * imag(kz)
+  rotate = abs(nz) < 1 / βmax && imag(ω) >= c₀ * abs(imag(kz))
   # deformation of p⊥ if poles are all below the necessary line and phase is sublight
   # p⊥ is always positive so the imaginary deformation is always positive
   # p⊥ can't have an constant imaginary offset because although the ∞ end has f->0
-  # the 0 end doesn't hence it must have zero imaginary part i.e. 0+iδ -> ∞+iδ
-  rotation = cis(rotate ? 0.01 : 0.0)
+  # the 0 end doesn't hence it must have zero imaginary part i.e. 0+i0 -> ∞+iδ
+  rotation = cis(rotate ? 0.01one(ω) : zero(ω))
 
   integrand = NewbergerRelativistic(S, ω, kz, k⊥)
 
@@ -146,7 +146,8 @@ function relativisticmomentum(S::CoupledRelativisticSpecies, C::Configuration)
     plab = (deboostedp(pboost) + im * deformation, pboost[2] * rotation)
     # jacobian of a real change of variable should be real
     jacobian = fγ(integrand, real.(plab)) / fγ(integrand, pboost)
-    return integrand(plab) * jacobian
+    # p -> p⊥ rotation so dp -> rotation dp
+    return integrand(plab) * jacobian * rotation
   end
 
   pz0 = boostgamma * S.m * boostvelocity # centre of new frame
