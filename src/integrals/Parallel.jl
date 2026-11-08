@@ -51,11 +51,9 @@ function parallel(Fz::AbstractFParallelNumerical, ω::Number, k::Wavenumber,
   end
 end
 
-struct MaxwellianIntegralsParallel{T, U, V}
-  vth::T
-  vd::U
-  ∫⁰¹²::NTuple{3, V}
-  vth⁻²2::T
+struct MaxwellianIntegralsParallel{T}
+  ∫⁰¹²::NTuple{3, T}
+  d∫⁰¹::NTuple{2, T}
 end
 
 """
@@ -70,6 +68,8 @@ function MaxwellianIntegralsParallel(vth, vd, ω, kz, nΩ)
     ∫⁰ = convert(T, 1 / (ω - nΩ))
     ∫¹ = convert(T, vd / (ω - nΩ))
     ∫² = convert(T, (vth^2 / 2 + vd^2) / (ω - nΩ))
+    d∫⁰ = zero(T) # d∫⁰ = (∫⁰ * vd  - ∫¹) * 2 / vth^2
+    d∫¹ = -∫⁰ # d∫¹ = (∫¹ * vd  - ∫²) * 2 / vth^2
   else
     σ⁻¹ = 1 / (kz * vth)
     @muladd z = (ω - kz * vd - nΩ) * σ⁻¹
@@ -85,18 +85,16 @@ function MaxwellianIntegralsParallel(vth, vd, ω, kz, nΩ)
     ∫⁰ = - causalconj(a) * σ⁻¹
     ∫¹ = - causalconj(b) * σ⁻¹
     ∫² = - causalconj(c) * σ⁻¹
+    twoZ1_vth = 2 * Z1 / vth
+    d∫⁰ = causalconj(twoZ1_vth) * σ⁻¹
+    d∫¹ = causalconj(twoZ1_vth * vd + 2 * Z2) * σ⁻¹
   end
-  return MaxwellianIntegralsParallel(vth, vd, (∫⁰, ∫¹, ∫²), 2 / vth^2)
+  return MaxwellianIntegralsParallel((∫⁰, ∫¹, ∫²), (d∫⁰, d∫¹))
 end
 (mib::MaxwellianIntegralsParallel)(power::Integer) = mib.∫⁰¹²[power + 1]
 
 function (mib::MaxwellianIntegralsParallel)(power::Unsigned, ∂F∂v::Bool)
-  output = mib(power)
-  if ∂F∂v # can't use muladd macro here for some reason, it causes a bug.
-    output *= mib.vd
-    output -= mib(power + 1)
-    output *= mib.vth⁻²2
-  end
+  output = ∂F∂v ? mib.d∫⁰¹[power + 1] : mib(power)
   return output
 end
 
