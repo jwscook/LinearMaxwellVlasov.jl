@@ -20,6 +20,7 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 [sources]
 GeneralBesselj = {rev = "main", url = "https://github.com/jwscook/GeneralBesselj.jl"}
 PlasmaDispersionFunctions = {rev = "main", url = "https://github.com/jwscook/PlasmaDispersionFunctions.jl"}
+SeriesAccelerators = {rev = "main", url = "https://github.com/jwscook/SeriesAccelerators.jl"}
 
 [compat]
 CommonSubexpressions = "≥ 0.3"
@@ -42,14 +43,6 @@ Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 UnitTestDesign = "239896fa-e45a-40e8-9993-3c434b0bc450"
-
-[source.GeneralBesselj]
-rev = "main"
-url = "https://github.com/jwscook/GeneralBessel.jl"
-
-[source.PlasmaDispersionFunctions]
-rev = "main"
-url = "https://github.com/jwscook/PlasmaDispersionFunctions.jl"
 
 [targets]
 test = ["Dates", "ForwardDiff", "InteractiveUtils", "Memoize", "Random", "Statistics", "Test", "UnitTestDesign"]
