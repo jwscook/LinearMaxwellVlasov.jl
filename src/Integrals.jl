@@ -5,6 +5,7 @@
 abstract type AbstractCacheType end
 struct ParallelCache <: AbstractCacheType end
 struct PerpendicularCache <: AbstractCacheType end
+struct GeneralCache <: AbstractCacheType end
 
 abstract type AbstractCacheOpType end
 
@@ -19,6 +20,7 @@ struct CacheKeyAndOp{T<:AbstractCacheType} <: Function end
 
 include("./integrals/Parallel.jl")
 include("./integrals/Perpendicular.jl")
+include("./integrals/GeneralCache.jl")
 
 
 struct CacheDict{C,V} <: AbstractDict{UInt64, V}
@@ -31,15 +33,34 @@ end
 mutable struct Cache
   parallel::Dict{UInt64,CacheDict{ParallelCache}}
   perpendicular::Dict{UInt64,CacheDict{PerpendicularCache}}
+  general::Dict{UInt64, CacheDict{GeneralCache}}
 end
 
 Cache() = Cache(Dict{UInt64,CacheDict{ParallelCache}}(),
-                Dict{UInt64,CacheDict{PerpendicularCache}}())
+                Dict{UInt64,CacheDict{PerpendicularCache}}(),
+                Dict{UInt64,CacheDict{GeneralCache}}())
 
 typehash(::Type{ParallelCache}, s) = uniqueid(s.Fz)::UInt64
 typehash(::Type{PerpendicularCache}, s) = uniqueid(s.F⊥)::UInt64
+# General contributions don't depend on the plasma frequency; it multiplies
+# the result afterwards. So hash every field except Π, and seed with the type
+# name rather than the type, because the type carries Π's type parameter.
+function typehash(::Type{GeneralCache}, s)
+  h = hash(nameof(typeof(s)))
+  for name in fieldnames(typeof(s))
+    name === :Π && continue
+    h = hash(getfield(s, name), h)
+  end
+  return h::UInt64
+end
 
-Base.empty!(c::Cache) = (map(empty!, (c.parallel, c.perpendicular)); return c)
+Base.empty!(c::Cache) = (map(empty!, (c.parallel, c.perpendicular, c.general)); return c)
+
+# The arguments that the cached function is called with when first populating
+# a CacheDict. Parallel and perpendicular integrals are per cyclotron harmonic,
+# whereas general caches hold the whole tensor for a (species, config) pair.
+cacheinitargs(::Type{<:AbstractCacheType}, species, config) = (species, config, 0)
+cacheinitargs(::Type{GeneralCache}, species, config) = (species, config)
 
 """
     Base.get!(f::F,data::Dict{UInt64,CacheDict{C}},species,config)where{F<:Function,C<:AbstractCacheType}
@@ -61,7 +82,7 @@ This process acts as a function barrier to get better type inference.
 function Base.get!(f::F, data::Dict{UInt64,CacheDict{C}}, species, config
     ) where {F<:Function, C<:AbstractCacheType}
   key = typehash(C, species)
-  args = (species, config, 0)
+  args = cacheinitargs(C, species, config)
   subkey, cacheop = CacheKeyAndOp{C}(args...)
   cache = get!(()->CacheDict{C}(subkey=>cacheop(f(args...))), data, key)
   V = Base.promote_op(f, typeof.(args)...)
@@ -142,4 +163,22 @@ end
   cache = get!(perpendicular, perpendicularcaches, species, config)
   perpendicular_memoised(i...) = get!(perpendicular, cache, i...)
   return perpendicular_memoised
+end
+
+"""
+    memoise(f, species, config::Configuration, generalcaches=Dict{UInt64,CacheDict{GeneralCache}}())
+
+Return `f(species, config)`, memoised in `generalcaches` if
+`config.options.memoisegeneral` is true.
+
+This is for contributions that are calculated in one go, rather than summed
+over cyclotron harmonics e.g. coupled velocity, relativistic momentum and
+Maxwell-Juttner species. The outer dictionary is keyed on the species and the
+inner `CacheDict` is keyed on the frequency, wavenumber and options.
+"""
+function memoise(f::F, species, config::Configuration,
+    generalcaches=Dict{UInt64,CacheDict{GeneralCache}}()) where {F<:Function}
+  config.options.memoisegeneral || return f(species, config)
+  cache = get!(f, generalcaches, species, config) # cache for this species (except Π) + config
+  return get!(f, cache, species, config) # memoised function f with the correct data dict
 end

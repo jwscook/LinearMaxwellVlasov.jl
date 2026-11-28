@@ -5,6 +5,7 @@ struct Options{T<:Number}
   summation_tol::Tolerance{T}
   memoiseparallel::Bool
   memoiseperpendicular::Bool
+  memoisegeneral::Bool
   cubature_maxevals::Int
   residue_maxevals::Int
   erroruponcubaturenonconvergence::Bool
@@ -31,6 +32,7 @@ struct Options{T<:Number}
       summation_tol::Tolerance = Tolerance(summation_atol, summation_rtol),
       memoiseparallel::Bool = false,
       memoiseperpendicular::Bool = false,
+      memoisegeneral::Bool = false,
       cuba_evals::Int = typemax(Int),
       cubature_maxevals::Int = cuba_evals,
       res_evals::Int = typemax(Int),
@@ -42,12 +44,12 @@ struct Options{T<:Number}
     ) where {T<:Real}
 
     _uniqueid = hash((quadrature_tol, cubature_tol, summation_tol,
-      memoiseparallel, memoiseperpendicular, cubature_maxevals, residue_maxevals,
+      memoiseparallel, memoiseperpendicular, memoisegeneral, cubature_maxevals, residue_maxevals,
       erroruponcubaturenonconvergence, cauchydeformationangle),
       hash(:Options))
 
     return new{T}(quadrature_tol, cubature_tol, summation_tol,
-      memoiseparallel, memoiseperpendicular, cubature_maxevals, residue_maxevals,
+      memoiseparallel, memoiseperpendicular, memoisegeneral, cubature_maxevals, residue_maxevals,
       erroruponcubaturenonconvergence, cauchydeformationangle, _uniqueid)
   end
 end

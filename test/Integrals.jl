@@ -53,4 +53,5 @@ using Test
   include("integrals/PerpendicularKeyAndFactor.jl")
   include("integrals/Perpendicular_maxwellian.jl")
   include("integrals/Memoisation.jl")
+  include("integrals/GeneralCache.jl")
 end

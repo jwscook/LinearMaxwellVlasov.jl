@@ -5,15 +5,15 @@ abstract type AbstractCoupledIntegrand end
 include("tensors/RelativisticMomentum.jl")
 
 function contribution(species::CoupledRelativisticSpecies,
-    config::Configuration, _::Cache=Cache())
-  return relativisticmomentum(species, config)
+    config::Configuration, cache::Cache=Cache())
+  return memoise(relativisticmomentum, species, config, cache.general)
 end
 
 include("tensors/MaxwellJuttner.jl")
 
 function contribution(species::MaxwellJuttnerSpecies,
-    config::Configuration, _::Cache=Cache())
-  return maxwelljuttner(species, config)
+    config::Configuration, cache::Cache=Cache())
+  return memoise(maxwelljuttner, species, config, cache.general)
 end
 
 include("tensors/CoupledVelocity.jl")
@@ -23,8 +23,8 @@ Calculate the unitless susceptibility tensor contribution for a
 coupled velocity distribution function, without the need to sum over harmonics.
 """
 function contribution(species::AbstractCoupledVelocitySpecies,
-    config::Configuration, _::Cache=Cache())
-  return coupledvelocity(species, config)
+    config::Configuration, cache::Cache=Cache())
+  return memoise(coupledvelocity, species, config, cache.general)
 end
 
 function contribution(species::AbstractSeparableVelocitySpecies,
