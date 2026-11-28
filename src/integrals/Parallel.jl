@@ -46,16 +46,16 @@ function parallel(Fz::AbstractFParallelNumerical, ω::Number, k::Wavenumber,
   return if iszero(kz)
     integrate(Fz, pkn, ∂F∂v, tol) / V(nΩ - ω)
   else
-    pole = Pole((ω - nΩ) / kz, k.causalsign, cauchydeformationangle)
+    p = (ω - nΩ) / kz
+    pole = Pole(p, k.causalsign, imagcontourdeformation(p, k.causalsign,
+      maximum(abs, (ω / kz, p)), cauchydeformationangle))
     integrate(Fz, pkn, pole, ∂F∂v, tol) / V(kz)
   end
 end
 
-struct MaxwellianIntegralsParallel{T, U, V}
-  vth::T
-  vd::U
-  ∫⁰¹²::NTuple{3, V}
-  vth⁻²2::T
+struct MaxwellianIntegralsParallel{T}
+  ∫⁰¹²::NTuple{3, T}
+  d∫⁰¹::NTuple{2, T}
 end
 
 """
@@ -64,12 +64,14 @@ over a drifting Maxwellian subject to the relevant kernels. All this is
 calculated here.
 """
 function MaxwellianIntegralsParallel(vth, vd, ω, kz, nΩ)
-  T = promote_type(typeof.((vth, vd, ω, kz, nΩ))...)
+  T = complex(promote_type(typeof.((vth, vd, ω, kz, nΩ))...))
   causalconj(z) = real(kz) >= 0 ? z : conj(z)
   if iszero(kz) # no need to do anything difficult!
-    ∫⁰ = T(1 / (ω - nΩ))
-    ∫¹ = T(vd / (ω - nΩ))
-    ∫² = T((vth^2 / 2 + vd^2) / (ω - nΩ))
+    ∫⁰ = convert(T, 1 / (ω - nΩ))
+    ∫¹ = convert(T, vd / (ω - nΩ))
+    ∫² = convert(T, (vth^2 / 2 + vd^2) / (ω - nΩ))
+    d∫⁰ = zero(T) # d∫⁰ = (∫⁰ * vd  - ∫¹) * 2 / vth^2
+    d∫¹ = -∫⁰ # d∫¹ = (∫¹ * vd  - ∫²) * 2 / vth^2
   else
     σ⁻¹ = 1 / (kz * vth)
     @muladd z = (ω - kz * vd - nΩ) * σ⁻¹
@@ -85,18 +87,16 @@ function MaxwellianIntegralsParallel(vth, vd, ω, kz, nΩ)
     ∫⁰ = - causalconj(a) * σ⁻¹
     ∫¹ = - causalconj(b) * σ⁻¹
     ∫² = - causalconj(c) * σ⁻¹
+    twoZ1_vth = 2 * Z1 / vth
+    d∫⁰ = causalconj(twoZ1_vth) * σ⁻¹
+    d∫¹ = causalconj(twoZ1_vth * vd + 2 * Z2) * σ⁻¹
   end
-  return MaxwellianIntegralsParallel(vth, vd, (∫⁰, ∫¹, ∫²), 2 / vth^2)
+  return MaxwellianIntegralsParallel((∫⁰, ∫¹, ∫²), (d∫⁰, d∫¹))
 end
 (mib::MaxwellianIntegralsParallel)(power::Integer) = mib.∫⁰¹²[power + 1]
 
 function (mib::MaxwellianIntegralsParallel)(power::Unsigned, ∂F∂v::Bool)
-  output = mib(power)
-  if ∂F∂v # can't use muladd macro here for some reason, it causes a bug.
-    output *= mib.vd
-    output -= mib(power + 1)
-    output *= mib.vth⁻²2
-  end
+  output = ∂F∂v ? mib.d∫⁰¹[power + 1] : mib(power)
   return output
 end
 

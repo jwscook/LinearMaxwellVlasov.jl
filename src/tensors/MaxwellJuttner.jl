@@ -1,4 +1,4 @@
-using QuadGK, StaticArrays
+using GeneralBesselk, QuadGK, SeriesAccelerators, StaticArrays
 
 struct MaxwellJuttnerIntegrand{T1, T2, T3<:Real, T4, T5, T6}
   m::T1
@@ -20,9 +20,8 @@ Mathematically equivalent to `besselk(ν, sqrtR) / besselk(2, μ)`, but evaluabl
 when `μ` is large enough that `besselk(2, μ)` itself underflows to zero.
 """
 @inline function besselk_ratio(ν::Integer, sqrtR::Number, rmi)
-  besselkxνsqrtR = abs(sqrtR) > 1e6 ? sqrt(π / 2sqrtR) : besselkx(ν, sqrtR)
+  besselkxνsqrtR = GeneralBesselk.besselkx(ν, sqrtR)
   output = exp(rmi.μ - sqrtR) * besselkxνsqrtR * rmi.invbesselkx2μ
-  @assert isfinite(output) (sqrtR, exp(rmi.μ - sqrtR), besselkxνsqrtR, rmi.invbesselkx2μ)
   return output
 end
 
@@ -30,19 +29,19 @@ end
 function (rmi::MaxwellJuttnerIntegrand)(ξ)
   m, ω, Ω, kz, k⊥ = rmi.m, rmi.ω, rmi.Ω, rmi.kz, rmi.k⊥
   sinξ, cosξ = sincos(ξ)
-  T1 = @MArray [cosξ sinξ 0; -sinξ cosξ 0; 0 0 1] # transpose of Swanson Eq 4.244
-  Qxx = k⊥^2 * sinξ^2
-  Qxy = k⊥^2 * sinξ * (1 - cosξ) # note negative of Swanson Eq 4.245 entry
-  Qxz = k⊥ * kz * ξ * sinξ
-  Qyy = -k⊥^2 * (1 - cosξ)^2
-  Qyz = -k⊥ * kz * ξ * (1 - cosξ) # note negative of Swanson Eq 4.245 entry
-  Qzz = kz^2 * ξ^2
-  T2 = (c₀ / Ω)^2 * @MArray [Qxx Qxy Qxz; -Qxy Qyy Qyz; Qxz -Qyz Qzz]
+  T1 = @SArray [cosξ sinξ 0; -sinξ cosξ 0; 0 0 1] # transpose of Swanson Eq 4.244
+  @cse begin
+    Qxx = k⊥^2 * sinξ^2
+    Qxy = k⊥^2 * sinξ * (1 - cosξ) # note negative of Swanson Eq 4.245 entry
+    Qxz = k⊥ * kz * ξ * sinξ
+    Qyy = -k⊥^2 * (1 - cosξ)^2
+    Qyz = -k⊥ * kz * ξ * (1 - cosξ) # note negative of Swanson Eq 4.245 entry
+    Qzz = kz^2 * ξ^2
+  end
+  T2 = (c₀ / Ω)^2 * @SArray [Qxx Qxy Qxz; -Qxy Qyy Qyz; Qxz -Qyz Qzz]
   R = ((rmi.μ * Ω - im * ξ * ω)^2 + 2 * (k⊥ * c₀)^2 * (1 - cosξ) + (kz * c₀ * ξ)^2) / Ω^2
-  @assert !iszero(R)
   sqrtR = sqrt(R)
   output = (besselk_ratio(2, sqrtR, rmi) * T1 - besselk_ratio(3, sqrtR, rmi) / sqrtR * T2) / R
-  @assert all(isfinite, output) (ξ, R, sqrtR)
   return output
 end
 
@@ -59,10 +58,18 @@ function maxwelljuttner(species::MaxwellJuttnerSpecies, config::Configuration)
   rmi = MaxwellJuttnerIntegrand(species.m, ω, species.Ω, kz, k⊥, μ, 1 / besselkx2μ)
 
   σ = sign(real(species.Ω)) # Swanson's derivation uses ξ = |Ω|t
-  igrand = QuadGK.quadgk_count(rmi, 0, σ * Inf; atol=config.options.quadrature_tol.abs,
-                                                rtol=config.options.quadrature_tol.rel,
-                                                norm=quadnorm)[1]
+  atol = config.options.quadrature_tol.abs
+  chunkrtol = config.options.quadrature_tol.rel / 2
+  chunk(n, atol) = QuadGK.quadgk(rmi, σ * 2n * π, σ * (n + 1) * 2π;
+    atol=atol, rtol=chunkrtol, order=25, norm=quadnorm)[1]
+  zerothterm = chunk(0, atol)
+  chunkatol = max(atol, chunkrtol * quadnorm(zerothterm))
+  period(n) = iszero(n) ? zerothterm : chunk(n, chunkatol)
 
+  igrand, isconverged = SeriesAccelerators.shanks(period, 4, 10_000;
+                                                  atol=config.options.quadrature_tol.abs,
+                                                  rtol=config.options.quadrature_tol.rel)
+  isconverged || @warn "Maxwell-Juttner time integral did not converge" maxlog=1
   @assert all(isfinite, igrand)
   factor = im * ω / species.Ω * μ^2
   @assert isfinite(factor)

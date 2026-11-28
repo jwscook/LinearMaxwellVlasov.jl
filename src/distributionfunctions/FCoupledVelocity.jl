@@ -31,24 +31,20 @@ struct FCoupledVelocityNumerical{T<:Function, U<:Number
   normalisation::Tuple{U,U}
   lower::Float64 # minimum speed for integration bounds
   upper::Float64 # maximum speed for integration bounds
-  function FCoupledVelocityNumerical(F::T, normalisation::Tuple{U,U},
-      lower=0.0, upper=DEFAULT_INTEGRAL_RANGE * norm(normalisation);
-      autonormalise::Bool=true) where {T, U}
-    output = new{T,U}(F, normalisation, lower, upper)
-    if autonormalise
-      n = integrate(output)
-      newf(vz, v⊥) = F(vz, v⊥) / n
-      newf(vz⊥) = newf(vz⊥[1], vz⊥[2])
-      return new{typeof(newf),U}(newf, normalisation, lower, upper)
-    else
-      is_normalised(output) || throw(ArgumentError("F is not normalised"))
-      return output
-    end
-  end
+  coefficient::Float64 # this actually normalizes the distribution function
+end
+function FCoupledVelocityNumerical(F::T, normalisation::Tuple{U,U},
+    lower=0.0, upper=DEFAULT_INTEGRAL_RANGE * norm(normalisation);
+    autonormalise::Bool=true) where {T, U}
+  tmp = FCoupledVelocityNumerical(F, normalisation, lower, upper, 1.0)
+  coefficient = autonormalise ? Float64(1 / (integrate(tmp))) : 1.0
+  output = FCoupledVelocityNumerical(F, normalisation, lower, upper, coefficient)
+  autonormalise || is_normalised(output) || throw(ArgumentError("F is not normalised"))
+  return output
 end
 
-(f::FCoupledVelocityNumerical)(v) = f.F(v[1], v[2])
-(f::FCoupledVelocityNumerical)(vz, v⊥) = f.F(vz, v⊥)
+(f::FCoupledVelocityNumerical)(v) = f(v[1], v[2])
+(f::FCoupledVelocityNumerical)(vz, v⊥) = f.F(vz, v⊥) * f.coefficient
 
 lower(f::FCoupledVelocityNumerical) = f.lower
 upper(f::FCoupledVelocityNumerical) = f.upper
@@ -70,7 +66,7 @@ function FCoupledVelocityNumerical(vthz::Real, vth⊥::Real=vthz,
   upper = sqrt((abs(vdz) + DEFAULT_INTEGRAL_RANGE * vthz)^2 +
                (abs(vd⊥) + DEFAULT_INTEGRAL_RANGE * vth⊥)^2)
   normalisation = (vthz + abs(vdz), vth⊥ + abs(vd⊥))
-  return FCoupledVelocityNumerical(F, normalisation, lower, upper)
+  return FCoupledVelocityNumerical(F, normalisation, lower, upper, 1.0)
 end
 
 function is_normalised(F::AbstractCoupledVelocity)
@@ -122,7 +118,7 @@ function FShell(vth::Real, vshell::Real)
   @assert isfinite(normalisation) && normalisation > 0
   F(vz, v⊥) = funnormalised(@SArray [vz, v⊥]) / normalisation
   characteristics = (vth + vshell, vth + vshell)
-  return FCoupledVelocityNumerical(F, characteristics, lower, upper)
+  return FCoupledVelocityNumerical(F, characteristics, lower, upper, 1.0)
 end
 
 """

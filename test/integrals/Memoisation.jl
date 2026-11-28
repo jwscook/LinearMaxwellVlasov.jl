@@ -97,6 +97,7 @@ Random.seed!(0)
         end
       end
     end
+
   end
   @testset "@inferred" begin
     for species ∈ (MaxwellianSpecies(rand(5)...), RingBeamSpecies(rand(6)...))

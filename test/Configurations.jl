@@ -24,7 +24,7 @@ end
   C = Configuration(ComplexF64(1.0, 0.1))
   h1 = hash(C)
   O1 = deepcopy(C.options)
-  O2 = Options(memoiseparallel=false)
+  O2 = Options(memoiseparallel=true)
   @assert O1 != O2
   C.options = O2
   h2 = hash(C)
